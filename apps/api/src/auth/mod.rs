@@ -1,8 +1,15 @@
-use sqlx::{query, query_as, Error};
+
 use sqlx::postgres::{PgPool, PgQueryResult};
+use argon2::{
+    password_hash::{
+        rand_core::OsRng,
+        PasswordHasher,  SaltString
+    }, Argon2, PasswordHash, PasswordVerifier
+};
 
 mod test;
 
+#[derive(PartialEq, Debug)]
 pub struct User {
     username: String,
     email: String,
@@ -10,13 +17,7 @@ pub struct User {
     name: String
 }
 
-impl PartialEq for User {
-    fn eq(&self, other: &Self) -> bool {
-        self.username == other.username && self.email == other.email && self.password == other.password && self.name == other.name
-    }
-}
-
-pub async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, Error> {
+async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let query = sqlx::query!(
         "INSERT INTO users (username, email, password, name) VALUES ($1, $2, $3, $4)",
         user.username,
@@ -30,14 +31,60 @@ pub async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, Error
     query
 }
 
-pub async fn find_user(username: &String, pool: &PgPool) -> Result<User, Error>{
+async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error>{
     let user = sqlx::query_as!(
         User,
-        "select * from users where username = $1",
+        "SELECT* from USERS WHERE username = $1",
         username
     )
     .fetch_one(pool)
     .await;
 
     user
+}
+
+fn generate_user_token() {
+
+}
+
+//TODO: Add logger for knowing what happen to the code
+pub async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
+
+    let password = user.password.as_bytes();
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+
+    let password_hash = argon2.hash_password(password, &salt);
+
+    match password_hash {
+        Ok(hashhed_password) => {
+            user.password = hashhed_password.to_string();
+            let result = add_user(&user, pool).await;
+
+            match result {
+                Ok(_) => Ok(true),
+                Err(err) => Err(err.to_string()),
+            }
+        },
+        Err(err) => Err(err.to_string()),
+    }
+}
+
+pub async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bool, String> {
+
+    let find_result = find_user(&username, pool).await;
+
+    match find_result {
+        Ok(user) => {
+            let hash = PasswordHash::new(&user.password);
+            match hash {
+                Ok(hash_value) => {
+                    let argon= Argon2::default();
+                    Ok(argon.verify_password(password.as_bytes(), &hash_value).is_ok())
+                },
+                Err(err) => Err(err.to_string()),
+            }
+        },
+        Err(err) => Err(err.to_string()),
+    }
 }
