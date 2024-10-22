@@ -46,7 +46,7 @@ async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Err
 async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error>{
     let user = sqlx::query_as!(
         User,
-        "SELECT* from USERS WHERE username = $1",
+        "SELECT * from USERS WHERE username = $1",
         username
     )
     .fetch_one(pool)
