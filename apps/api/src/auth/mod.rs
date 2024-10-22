@@ -1,4 +1,6 @@
 
+use chrono::{DateTime, Utc};
+use rand::{distributions::Alphanumeric, Rng};
 use sqlx::postgres::{PgPool, PgQueryResult};
 use argon2::{
     password_hash::{
@@ -8,6 +10,9 @@ use argon2::{
 };
 
 mod test;
+mod api;
+
+const DEFAULT_TOKEN_LENGTH: u8 = 32;
 
 #[derive(PartialEq, Debug)]
 pub struct User {
@@ -15,6 +20,13 @@ pub struct User {
     email: String,
     password: String,
     name: String
+}
+
+pub struct UserSession {
+    token: String,
+    refresh_token: String,
+    expiry_date: DateTime<Utc>, 
+    username: String
 }
 
 async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
@@ -43,8 +55,14 @@ async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error
     user
 }
 
-fn generate_user_token() {
+fn generate_token(length: u8) -> String {
+        let random_string: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)  // generates random alphanumeric characters
+        .take(length.into())                     // take n characters
+        .map(char::from)             // map them to characters
+        .collect();                  // collect into a String
 
+    random_string
 }
 
 //TODO: Add logger for knowing what happen to the code
@@ -87,4 +105,16 @@ pub async fn login(username: &String, password: &String, pool: &PgPool) -> Resul
         },
         Err(err) => Err(err.to_string()),
     }
+}
+
+pub async fn create_user_session(username: &String, pool: &PgPool) -> Result<bool, String> {
+    todo!()
+}
+
+pub async fn refresh_user_session() {
+    todo!()
+}
+
+pub async fn validate_session(userSession: &UserSession) -> Option<bool> {
+    todo!()
 }

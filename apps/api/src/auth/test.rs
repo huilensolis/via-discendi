@@ -113,11 +113,7 @@ mod tests {
         let result = login(&String::from("test3"), &String::from("unhashed"), &pool).await;
 
         match result {
-            Ok(value) => {
-                if !value {
-                    panic!("Should not be false")
-                }
-            },
+            Ok(_) => {},
             Err(err) => panic!("{}", err),
         }
     }

@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-native-tls"] }
-axum = "0.7"
-argon2 = "0.5"
+tokio = { version = "1", features = ["full"] } # async lib
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-native-tls"] } # query lib
+axum = "0.7" # routing lib
+argon2 = "0.5" # hashing lib
+rand = "0.8"  # randomizer lib
+chrono = "0.4" # for datetime dependencies
