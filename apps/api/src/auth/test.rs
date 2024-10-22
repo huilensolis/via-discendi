@@ -7,7 +7,7 @@ mod tests {
     use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
 
 
-    use crate::auth::{add_user, create_user_session, find_user, login, sign_up, User, DEFAULT_SESSION_DURATION};
+    use crate::auth::{add_user, create_user_session, find_user, login, sign_up, User, DEFAULT_SESSION_DURATION_MIN};
 
     #[tokio::test]
     async fn test_add_user() {
@@ -164,7 +164,7 @@ mod tests {
         match result {
             Ok(created_session) => {
                 // minus one minutes because some milliseconds delay making sure it always be in range 30 minutes
-                let current_time = Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION) - Duration::minutes(1);
+                let current_time = Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN) - Duration::minutes(1);
                 assert!(created_session.expiry_date.unwrap().cmp(&current_time.naive_utc()) == Ordering::Greater)
             },
             Err(err) => panic!("{}", err.to_string()),

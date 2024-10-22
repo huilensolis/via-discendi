@@ -16,7 +16,7 @@ mod api;
 
 // TODO: add config so can be defined when running the application
 const DEFAULT_TOKEN_LENGTH: u8 = 128;
-const DEFAULT_SESSION_DURATION: i64 = 30;
+const DEFAULT_SESSION_DURATION_MIN: i64 = 30;
 
 #[derive(Debug)]
 pub struct User {
@@ -156,7 +156,7 @@ pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Resu
         Ok(mut user_session) => {
             let new_token = generate_token(DEFAULT_TOKEN_LENGTH); 
             user_session.token = new_token;
-            user_session.expiry_date = Some((Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION)).naive_utc());
+            user_session.expiry_date = Some((Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN)).naive_utc());
             Ok(update_user_token(&user_session, pool).await.is_ok())
         },
         Err(_) => Err(String::from("Invalid refresh token")),
@@ -178,7 +178,7 @@ pub async fn create_user_session(username: &String, pool: &PgPool) -> Result<Use
     let token = generate_token(DEFAULT_TOKEN_LENGTH); 
     let refresh_token = generate_token(DEFAULT_TOKEN_LENGTH);
     let current_time = Local::now();
-    let expiry_date= Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION);
+    let expiry_date= Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN);
 
     let query = sqlx::query!(
             "INSERT INTO USERS_SESSION (token, refresh_token, expiry_date, username) VALUES($1, $2, $3, $4)",

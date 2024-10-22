@@ -4,6 +4,7 @@ use axum::{
 };
 
 mod auth;
+mod router_config;
 
 #[tokio::main]
 async fn main() {
