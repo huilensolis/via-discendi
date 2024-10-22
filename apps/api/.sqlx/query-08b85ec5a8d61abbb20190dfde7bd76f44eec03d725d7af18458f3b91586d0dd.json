@@ -5,10 +5,10 @@
     "columns": [],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
-        "Text",
-        "Text"
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
       ]
     },
     "nullable": []

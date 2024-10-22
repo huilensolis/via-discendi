@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] } # async lib
-sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-native-tls"] } # query lib
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-native-tls", "chrono"] } # query lib
 axum = "0.7" # routing lib
 argon2 = "0.5" # hashing lib
 rand = "0.8"  # randomizer lib
