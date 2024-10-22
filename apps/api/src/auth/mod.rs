@@ -14,12 +14,11 @@ use argon2::{
 mod test;
 mod api;
 
-
 // TODO: add config so can be defined when running the application
 const DEFAULT_TOKEN_LENGTH: u8 = 128;
 const DEFAULT_SESSION_DURATION: i64 = 30;
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub struct User {
     username: String,
     email: String,
@@ -27,6 +26,12 @@ pub struct User {
     name: String,
     created_at: Option<NaiveDateTime>,
     updated_at: Option<NaiveDateTime>
+}
+
+impl PartialEq for User {
+    fn eq(&self, other: &Self) -> bool {
+        self.username == other.username && self.email == other.email && self.password == other.password && self.name == other.name
+    }
 }
 
 #[derive(PartialEq, Debug)]
