@@ -144,7 +144,7 @@ pub async fn login(username: &String, password: &String, pool: &PgPool) -> Resul
     }
 }
 
-pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<bool, String> {
+pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<String, String> {
     let query = sqlx::query_as!(
         UserSession,
         "SELECT * from USERS_SESSION WHERE REFRESH_TOKEN = $1",
@@ -157,7 +157,10 @@ pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Resu
             let new_token = generate_token(DEFAULT_TOKEN_LENGTH); 
             user_session.token = new_token;
             user_session.expiry_date = Some((Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN)).naive_utc());
-            Ok(update_user_token(&user_session, pool).await.is_ok())
+            if !update_user_token(&user_session, pool).await.is_ok() {
+                return Err("Could not update token")
+            }
+            Ok(new_token)
         },
         Err(_) => Err(String::from("Invalid refresh token")),
     }
