@@ -1,14 +1,18 @@
 
-use axum::{extract::State, http::{header, HeaderMap, Response, StatusCode}, Json};
+use axum::{body::Body, extract::State, http::{header, HeaderMap, Response, StatusCode}, routing::post, Json, Router};
+use axum_macros::debug_handler;
+use serde::Deserialize;
 use crate::router_config::{CreateResponse, RouterGlobalState};
 
 use super::{create_user_session, login, refresh_user_session, sign_up, User, DEFAULT_SESSION_DURATION_MIN};
 
+#[derive(Deserialize)]
 pub struct LoginRequest {
     username: String,
     password: String
 }
 
+#[derive(Deserialize)]
 pub struct SignUpRequest {
     username: String,
     password: String,
@@ -17,28 +21,32 @@ pub struct SignUpRequest {
 }
 
 // TODO: Create a logger for sensitive error only to server not returning raw error
+// TODO: fix all unwrap
+#[debug_handler]
 pub async fn login_router(
-    State(RouterGlobalState {pool,..}): State<RouterGlobalState>,
+    State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<LoginRequest>
-) -> Response<CreateResponse> {
+) -> Response<Body> {
 
-    let result = login(&request.username, &request.password, &pool).await;
+    let result = login(&request.username, &request.password, &router_global_state.pool).await;
     
     match result {
         Ok(login_succesful) => {
             if !login_succesful {
-                return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(
-                    CreateResponse { 
+                let response = serde_json::to_string(
+                    &CreateResponse { 
                         is_successful: false,
                         message: String::from("Invalid username or password")
-                        }
-                    )
-                .unwrap()
+                    }
+                ).unwrap();
+
+                return Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from(response))
+                    .unwrap();
             }
 
-            let session_result = create_user_session(&request.username, &pool).await;
+            let session_result = create_user_session(&request.username, &router_global_state.pool).await;
 
             match session_result {
                 Ok(session) => {
@@ -46,39 +54,46 @@ pub async fn login_router(
                     let access_token_cookie = format!("token={}; HttpOnly; Secure; Path=/; Max-Age={}", &session.token, DEFAULT_SESSION_DURATION_MIN * 60);
                     let refresh_token_cookie = format!("refresh_token={}; HttpOnly; Secure; Path=/refresh", &session.refresh_token);
 
-                    Response::builder()
+                    let response =  serde_json::to_string(
+                        &CreateResponse {
+                            is_successful: true,
+                            message: String::from("Successfully login")
+                        }).unwrap();
+
+                    return Response::builder()
                         .status(StatusCode::OK)
                         .header(header::SET_COOKIE, access_token_cookie)
                         .header(header::SET_COOKIE, refresh_token_cookie)
-                        .body(CreateResponse {
-                            is_successful: true,
-                            message: String::from("Successfully login")
-                        }).unwrap()
+                        .body(Body::from(response)).unwrap();
                 },
                 Err(err_msg) => {
+
+                    let response =  serde_json::to_string(
+                        &CreateResponse {
+                            is_successful: true,
+                            message: String::from("Successfully login")
+                        }).unwrap();
+
                     Response::builder()
                     .status(StatusCode::BAD_REQUEST)
-                    .body(
-                        CreateResponse { 
-                            is_successful: false,
-                            message: err_msg
-                            }
-                        )
+                    .body(Body::from(response))
                     .unwrap()
                 },
             }
 
         },
         Err(err) => {
-                Response::builder()
+                let response =  serde_json::to_string(
+                        &CreateResponse { 
+                            is_successful: false,
+                            message: String::from("Invalid username or password")
+                    }
+                ).unwrap();
+
+                return Response::builder()
                 .status(StatusCode::BAD_REQUEST)
-                .body(
-                    CreateResponse { 
-                        is_successful: false,
-                        message: String::from("Invalid username or password")
-                        }
-                    )
-                .unwrap()
+                .body(Body::from(response))
+                .unwrap();
         },
     }
 }
@@ -86,7 +101,7 @@ pub async fn login_router(
 pub async fn sign_up_router(
     State(RouterGlobalState {pool,..}): State<RouterGlobalState>,
     Json(request): Json<SignUpRequest>
-) -> Response<CreateResponse> {
+) -> Response<Body> {
     let mut sign_up_user = User{
         created_at: None,
         updated_at: None,
@@ -103,33 +118,38 @@ pub async fn sign_up_router(
         Ok(is_successful) => {
 
             if !is_successful {
-                return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(
-                    CreateResponse { 
+                let response = serde_json::to_string(&CreateResponse { 
                         is_successful: false,
                         message: String::from("Could not sign up due to error please try again")
-                        }
-                    )
+                }).unwrap();
+
+                return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(response))
                 .unwrap();
             }
 
-        Response::builder()
-            .status(StatusCode::OK)
-            .body(CreateResponse {
+        let response = serde_json::to_string(
+            &CreateResponse {
                 is_successful: true,
                 message: String::from("Successfuly sign up")
-            }).unwrap()
+            }).unwrap();
+        
+        Response::builder()
+            .status(StatusCode::OK)
+            .body(Body::from(response)).unwrap()
         },
         Err(error_message) => {
-                return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(
-                    CreateResponse { 
+                let response = serde_json::to_string(
+                    &CreateResponse { 
                         is_successful: false,
                         message: String::from(error_message)
                         }
-                    )
+                ).unwrap();
+
+                return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from(response))
                 .unwrap();
         },
     }
@@ -138,7 +158,7 @@ pub async fn sign_up_router(
 pub async fn refresh_token_router(
     State(RouterGlobalState {pool,..}): State<RouterGlobalState>,
     headers: HeaderMap,
-) -> Response<CreateResponse> {
+) -> Response<Body> {
     //TODO: get the correct key
     let refresh_token = headers.get("REFRESH_TOKEN");
     match refresh_token {
@@ -147,38 +167,54 @@ pub async fn refresh_token_router(
             let new_token_result = refresh_user_session(&String::from(value.to_str().unwrap()), &pool).await;
             match new_token_result {
                 Ok(token) => {
+                    let response = serde_json::to_string(
+                        &CreateResponse { 
+                            is_successful: true,
+                            message: String::from("Token refreshed")
+                        }).unwrap();
+
                     Response::builder()
                         .status(StatusCode::OK)
                         .header(header::SET_COOKIE, token)
-                        .body(CreateResponse { 
-                            is_successful: true,
-                            message: String::from("Token refreshed")
-                        })
+                        .body(Body::from(response))
                         .unwrap()
                 },
                 Err(err) => {
-                return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(
-                    CreateResponse { 
+                    let response = serde_json::to_string(
+                        &CreateResponse { 
                         is_successful: false,
                         message: String::from(err)
                         }
-                    )
-                .unwrap();
-                },
+                    ).unwrap();
+
+                    return Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from(response))
+                    .unwrap();
+                    },
             }
         } ,
         None => {
-                return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(
-                    CreateResponse { 
+                let response = serde_json::to_string( 
+                    &CreateResponse { 
                         is_successful: false,
                         message: String::from("Please login before refreshing token")
                         }
-                    )
+                ).unwrap();
+
+                return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from(response))
                 .unwrap();
         },
     }
+}
+
+
+pub async fn router(global_state: RouterGlobalState) -> Router<RouterGlobalState> {
+    Router::new()
+        .route("/api/v1/login", post(login_router))
+        .route("/api/v1/sign_up", post(sign_up_router))
+        .route("/api/v1/refresh_token", post(refresh_token_router))
+        .with_state(global_state)
 }

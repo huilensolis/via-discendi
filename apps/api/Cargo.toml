@@ -8,7 +8,10 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] } # async lib
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-native-tls", "chrono"] } # query lib
-axum = "0.7" # routing lib
+axum = {version = "0.7"} # routing lib
+axum-macros = "0.4.2"
 argon2 = "0.5" # hashing lib
 rand = "0.8"  # randomizer lib
 chrono = "0.4" # for datetime dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.107"
