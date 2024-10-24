@@ -1,6 +1,9 @@
 
+use std::collections::HashMap;
+
 use axum::{body::Body, extract::State, http::{header, HeaderMap, Response, StatusCode}, Json};
 use serde::Deserialize;
+use serde_json::Map;
 use crate::router_common::{CreateResponse, RouterGlobalState};
 
 use super::{create_user_session, login, refresh_user_session, sign_up, User, DEFAULT_SESSION_DURATION_MIN};
@@ -17,6 +20,23 @@ pub struct SignUpRequest {
     password: String,
     email: String,
     name: String
+}
+
+fn parse_cookie_value(value: String) -> HashMap<String, String> {
+    let separated_kv=  value.split(";");
+    let mut map  = HashMap::new();
+
+    for unstructured_kv in separated_kv {
+        let mut kv = unstructured_kv.split("=");
+        let key = kv.next();
+        let value= kv.next();
+
+        if key.is_some() && value.is_some() {
+            map.insert(String::from(key.unwrap()), String::from(value.unwrap()));
+        }
+    }
+
+    return map;
 }
 
 // TODO: Create a logger for sensitive error only to server not returning raw error
@@ -157,12 +177,27 @@ pub async fn refresh_token_router(
     State(RouterGlobalState {pool,..}): State<RouterGlobalState>,
     headers: HeaderMap,
 ) -> Response<Body> {
-    //TODO: get the correct key
-    let refresh_token = headers.get("REFRESH_TOKEN");
-    match refresh_token {
+    let cookies= headers.get("cookie");
+
+    match cookies {
         Some(value) => {
-            
-            let new_token_result = refresh_user_session(&String::from(value.to_str().unwrap()), &pool).await;
+            let cookie_map = parse_cookie_value(value.to_str().unwrap().to_owned());
+            //TODO: probably need to set enum for  better settings
+            let refresh_token = cookie_map.get("refresh_token");
+            if refresh_token.is_none() {
+                let response = serde_json::to_string( 
+                    &CreateResponse { 
+                        is_successful: false,
+                        message: String::from("Please login before refreshing token")
+                        }
+                ).unwrap();
+
+                return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from(response))
+                .unwrap();
+            }
+            let new_token_result = refresh_user_session(&refresh_token.unwrap(), &pool).await;
             match new_token_result {
                 Ok(token) => {
                     let response = serde_json::to_string(
