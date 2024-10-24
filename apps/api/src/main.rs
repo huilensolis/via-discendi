@@ -2,11 +2,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use router_config::RouterGlobalState;
+use router_common::RouterGlobalState;
 use sqlx::postgres::PgPoolOptions;
 
 mod auth;
-mod router_config;
+mod router_common;
 
 #[tokio::main]
 async fn main() {
