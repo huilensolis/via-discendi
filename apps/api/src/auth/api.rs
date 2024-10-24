@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use axum::{body::Body, extract::State, http::{header, HeaderMap, Response, StatusCode}, Json};
 use serde::Deserialize;
-use serde_json::Map;
 use crate::router_common::{CreateResponse, RouterGlobalState};
 
 use super::{create_user_session, login, refresh_user_session, sign_up, User, DEFAULT_SESSION_DURATION_MIN};
