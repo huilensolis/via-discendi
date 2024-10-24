@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from USERS WHERE username = $1",
+  "query": "SELECT *  FROM USERS_SESSION WHERE TOKEN = $1",
   "describe": {
     "columns": [
       {
@@ -10,18 +10,18 @@
       },
       {
         "ordinal": 1,
-        "name": "email",
+        "name": "token",
         "type_info": "Varchar"
       },
       {
         "ordinal": 2,
-        "name": "password",
+        "name": "refresh_token",
         "type_info": "Varchar"
       },
       {
         "ordinal": 3,
-        "name": "name",
-        "type_info": "Varchar"
+        "name": "expiry_date",
+        "type_info": "Timestamp"
       },
       {
         "ordinal": 4,
@@ -48,5 +48,5 @@
       true
     ]
   },
-  "hash": "57f341307864434e297238a5c190fb9ae86bf61e449b83f74b334dd2d108f0bd"
+  "hash": "ffed2e20cc090160f20248fa4da577d3c40b5dcafb6f53b96da11d21c2b27a67"
 }

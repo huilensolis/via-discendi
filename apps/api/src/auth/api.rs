@@ -1,6 +1,5 @@
 
-use axum::{body::Body, extract::State, http::{header, HeaderMap, Response, StatusCode}, routing::post, Json, Router};
-use axum_macros::debug_handler;
+use axum::{body::Body, extract::State, http::{header, HeaderMap, Response, StatusCode}, Json};
 use serde::Deserialize;
 use crate::router_config::{CreateResponse, RouterGlobalState};
 
@@ -22,9 +21,8 @@ pub struct SignUpRequest {
 
 // TODO: Create a logger for sensitive error only to server not returning raw error
 // TODO: fix all unwrap
-#[debug_handler]
 pub async fn login_router(
-    State(router_global_state): State<RouterGlobalState>,
+    State(router_global_state): State<RouterGlobalState>, // Use '_ to elide the explicit lifetime
     Json(request): Json<LoginRequest>
 ) -> Response<Body> {
 
@@ -52,7 +50,7 @@ pub async fn login_router(
                 Ok(session) => {
                     //TODO: this probably won't work so need to change how to set the cookies
                     let access_token_cookie = format!("token={}; HttpOnly; Secure; Path=/; Max-Age={}", &session.token, DEFAULT_SESSION_DURATION_MIN * 60);
-                    let refresh_token_cookie = format!("refresh_token={}; HttpOnly; Secure; Path=/refresh", &session.refresh_token);
+                    let refresh_token_cookie = format!("refresh_token={}; HttpOnly; Secure; Path=/refresh_token", &session.refresh_token);
 
                     let response =  serde_json::to_string(
                         &CreateResponse {
@@ -70,8 +68,8 @@ pub async fn login_router(
 
                     let response =  serde_json::to_string(
                         &CreateResponse {
-                            is_successful: true,
-                            message: String::from("Successfully login")
+                            is_successful: false,
+                            message: String::from(err_msg)
                         }).unwrap();
 
                     Response::builder()
@@ -208,13 +206,4 @@ pub async fn refresh_token_router(
                 .unwrap();
         },
     }
-}
-
-
-pub async fn router(global_state: RouterGlobalState) -> Router<RouterGlobalState> {
-    Router::new()
-        .route("/api/v1/login", post(login_router))
-        .route("/api/v1/sign_up", post(sign_up_router))
-        .route("/api/v1/refresh_token", post(refresh_token_router))
-        .with_state(global_state)
 }

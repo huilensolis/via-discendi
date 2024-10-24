@@ -12,7 +12,7 @@ use argon2::{
 };
 
 mod test;
-mod api;
+pub mod api;
 
 // TODO: add config so can be defined when running the application
 const DEFAULT_TOKEN_LENGTH: u8 = 128;
@@ -103,7 +103,7 @@ async fn find_session_by_username(username: &String, pool: &PgPool) -> Result<Us
 }
 
 //TODO: Add logger for knowing what happen to the code
-pub async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
+async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
 
     let password = user.password.as_bytes();
     let salt = SaltString::generate(&mut OsRng);
@@ -125,7 +125,7 @@ pub async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
     }
 }
 
-pub async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bool, String> {
+async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bool, String> {
 
     let find_result = find_user(&username, pool).await;
 
@@ -144,7 +144,7 @@ pub async fn login(username: &String, password: &String, pool: &PgPool) -> Resul
     }
 }
 
-pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<String, String> {
+async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<String, String> {
     let query = sqlx::query_as!(
         UserSession,
         "SELECT * from USERS_SESSION WHERE REFRESH_TOKEN = $1",
@@ -155,10 +155,10 @@ pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Resu
     match query {
         Ok(mut user_session) => {
             let new_token = generate_token(DEFAULT_TOKEN_LENGTH); 
-            user_session.token = new_token;
+            user_session.token = new_token.clone();
             user_session.expiry_date = Some((Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN)).naive_utc());
             if !update_user_token(&user_session, pool).await.is_ok() {
-                return Err("Could not update token")
+                return Err(String::from("Could not update token"))
             }
             Ok(new_token)
         },
@@ -166,9 +166,9 @@ pub async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Resu
     }
 }
 
-pub async fn get_user_session(token: &String, pool: &PgPool) -> Result<UserSession, sqlx::Error> {
+async fn get_user_session(token: &String, pool: &PgPool) -> Result<UserSession, sqlx::Error> {
     let query = sqlx::query_as!(
-            UserSession,
+        UserSession,
         "SELECT *  FROM USERS_SESSION WHERE TOKEN = $1",
         token
     ).fetch_one(pool)
@@ -177,7 +177,7 @@ pub async fn get_user_session(token: &String, pool: &PgPool) -> Result<UserSessi
     query
 }
 
-pub async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSession, String> {
+async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSession, String> {
     let token = generate_token(DEFAULT_TOKEN_LENGTH); 
     let refresh_token = generate_token(DEFAULT_TOKEN_LENGTH);
     let current_time = Local::now();
@@ -213,7 +213,7 @@ pub async fn create_user_session(username: &String, pool: &PgPool) -> Result<Use
     }
 }
 
-pub async fn validate_session(user_session: &UserSession) -> Result<bool, String>  {
+async fn validate_session(user_session: &UserSession) -> Result<bool, String>  {
     match user_session.expiry_date {
         Some(expiry_date) => {
             let current_time = Local::now().naive_utc();
