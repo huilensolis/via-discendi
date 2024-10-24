@@ -1,0 +1,3 @@
+-- Add down migration script here
+DROP TABLE IF EXISTS USERS_SESSION;
+DROP TABLE IF EXISTS USERS;
