@@ -1,10 +1,10 @@
 use axum::{
-    middleware::{self, from_fn},
+    middleware::from_fn,
     routing::{get, post},
     Router,
 };
 use config::get_app_config;
-use log::{info, Level, LevelFilter};
+use log::{info, LevelFilter};
 use logger::SimpleLogger;
 use router_common::RouterGlobalState;
 
