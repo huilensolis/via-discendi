@@ -1,5 +1,5 @@
 use config::{Config, ConfigError};
-use log::{Level, LevelFilter};
+use log::Level;
 use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
 

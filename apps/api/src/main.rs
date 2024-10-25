@@ -4,8 +4,7 @@ use axum::{
     Router,
 };
 use config::get_app_config;
-use log::{info, LevelFilter};
-use logger::SimpleLogger;
+use log::info;
 use router_common::RouterGlobalState;
 
 mod auth;
