@@ -3,34 +3,30 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use log::{info, Level, LevelFilter, SetLoggerError};
+use config::get_app_config;
+use log::{info, Level, LevelFilter};
 use logger::SimpleLogger;
 use router_common::RouterGlobalState;
-use sqlx::postgres::PgPoolOptions;
 
 mod auth;
+mod config;
 mod logger;
 mod router_common;
 mod router_middleware;
 
-static LOGGER: SimpleLogger = SimpleLogger {
-    allowed_level: Level::Debug,
-};
-
-pub fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Debug))
-}
-
 #[tokio::main]
 async fn main() {
-    let port = 3000;
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect("postgres://myuser:mypassword@localhost/mydatabase")
-        .await
+    let config = get_app_config().unwrap();
+
+    let logger: SimpleLogger = SimpleLogger {
+        allowed_level: config.logging_level,
+    };
+
+    log::set_boxed_logger(Box::new(logger))
+        .map(|()| log::set_max_level(LevelFilter::Debug))
         .unwrap();
 
-    init().unwrap();
+    let pool = config.get_pool().await.unwrap();
     let router_global_state = RouterGlobalState { pool };
 
     info!("Configuring routers...");
@@ -46,9 +42,9 @@ async fn main() {
         .layer(from_fn(router_middleware::trace_time))
         .with_state(router_global_state);
 
-    info!("Starting server on port {}", port);
+    info!("Starting server on port {}", &config.port);
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port))
         .await
         .unwrap();
     axum::serve(listener, main_router).await.unwrap();
