@@ -14,11 +14,11 @@ mod router_common;
 mod router_middleware;
 
 static LOGGER: SimpleLogger = SimpleLogger {
-    allowed_level: Level::Info,
+    allowed_level: Level::Debug,
 };
 
 pub fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info))
+    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Debug))
 }
 
 #[tokio::main]
