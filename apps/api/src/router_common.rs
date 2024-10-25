@@ -1,4 +1,3 @@
-use crate::logger::SimpleLogger;
 use serde::Serialize;
 use sqlx::PgPool;
 
