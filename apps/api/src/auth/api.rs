@@ -100,9 +100,10 @@ pub async fn login_router(
                         .unwrap();
                 }
                 Err(err_msg) => {
+                    error!("{}", err_msg);
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: false,
-                        message: String::from(err_msg),
+                        message: String::from("Invalid username or password"),
                     })
                     .unwrap();
 
