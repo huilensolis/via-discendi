@@ -155,7 +155,6 @@ async fn refresh_user_session(
     refresh_token: &String,
     pool: &PgPool,
 ) -> Result<UserSession, String> {
-    debug!("the refresh token {}", &refresh_token);
     let result = get_user_session_by_refresh_token(refresh_token, pool).await;
 
     match result {
