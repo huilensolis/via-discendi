@@ -5,6 +5,7 @@ use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
 };
 use chrono::{Duration, NaiveDateTime};
+use log::{debug, error};
 use rand::{distributions::Alphanumeric, Rng};
 use sqlx::{
     postgres::{PgPool, PgQueryResult},
@@ -150,16 +151,13 @@ async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bo
     }
 }
 
-async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<String, String> {
-    let query = sqlx::query_as!(
-        UserSession,
-        "SELECT * from USERS_SESSION WHERE REFRESH_TOKEN = $1",
-        refresh_token
-    )
-    .fetch_one(pool)
-    .await;
+async fn refresh_user_session(
+    refresh_token: &String,
+    pool: &PgPool,
+) -> Result<UserSession, String> {
+    let result = get_user_session_by_refresh_token(refresh_token, pool).await;
 
-    match query {
+    match result {
         Ok(mut user_session) => {
             let new_token = generate_token(DEFAULT_TOKEN_LENGTH);
             user_session.token = new_token.clone();
@@ -168,17 +166,23 @@ async fn refresh_user_session(refresh_token: &String, pool: &PgPool) -> Result<S
             if !update_user_token(&user_session, pool).await.is_ok() {
                 return Err(String::from("Could not update token"));
             }
-            Ok(new_token)
+            Ok(user_session)
         }
-        Err(_) => Err(String::from("Invalid refresh token")),
+        Err(err) => {
+            error!("{}", err);
+            Err(String::from("Invalid refresh token"))
+        }
     }
 }
 
-async fn get_user_session(token: &String, pool: &PgPool) -> Result<UserSession, sqlx::Error> {
+async fn get_user_session_by_refresh_token(
+    refresh_token: &String,
+    pool: &PgPool,
+) -> Result<UserSession, sqlx::Error> {
     let query = sqlx::query_as!(
         UserSession,
-        "SELECT *  FROM USERS_SESSION WHERE TOKEN = $1",
-        token
+        "SELECT *  FROM USERS_SESSION WHERE REFRESH_TOKEN = $1",
+        refresh_token
     )
     .fetch_one(pool)
     .await;
@@ -190,6 +194,15 @@ async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSes
     let token = generate_token(DEFAULT_TOKEN_LENGTH);
     let refresh_token = generate_token(DEFAULT_TOKEN_LENGTH);
     let current_time = Local::now();
+
+    let existing_session = find_session_by_username(username, pool).await;
+
+    if existing_session.is_ok() {
+        let session = existing_session.unwrap();
+        let update_result = refresh_user_session(&session.refresh_token, pool).await;
+        return update_result;
+    }
+
     let expiry_date = Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN);
 
     let query = sqlx::query!(

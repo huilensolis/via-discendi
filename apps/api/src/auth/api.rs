@@ -100,9 +100,10 @@ pub async fn login_router(
                         .unwrap();
                 }
                 Err(err_msg) => {
+                    error!("{}", err_msg);
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: false,
-                        message: String::from(err_msg),
+                        message: String::from("Invalid username or password"),
                     })
                     .unwrap();
 
@@ -210,9 +211,9 @@ pub async fn refresh_token_router(
                     .body(Body::from(response))
                     .unwrap();
             }
-            let new_token_result = refresh_user_session(&refresh_token.unwrap(), &pool).await;
-            match new_token_result {
-                Ok(token) => {
+            let new_user_session = refresh_user_session(&refresh_token.unwrap(), &pool).await;
+            match new_user_session {
+                Ok(user_session) => {
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: true,
                         message: String::from("Token refreshed"),
@@ -221,7 +222,7 @@ pub async fn refresh_token_router(
 
                     Response::builder()
                         .status(StatusCode::OK)
-                        .header(header::SET_COOKIE, token)
+                        .header(header::SET_COOKIE, user_session.token)
                         .body(Body::from(response))
                         .unwrap()
                 }
@@ -254,4 +255,3 @@ pub async fn refresh_token_router(
         }
     }
 }
-
