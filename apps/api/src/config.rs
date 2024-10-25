@@ -1,7 +1,9 @@
 use config::{Config, ConfigError};
-use log::Level;
+use log::{Level, LevelFilter};
 use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
+
+use crate::logger::SimpleLogger;
 
 #[derive(Deserialize)]
 pub struct AppConfig {
@@ -23,6 +25,16 @@ pub fn get_app_config() -> Result<AppConfig, ConfigError> {
 }
 
 impl AppConfig {
+    pub fn init(&self) {
+        let logger: SimpleLogger = SimpleLogger {
+            allowed_level: self.logging_level,
+        };
+
+        log::set_boxed_logger(Box::new(logger))
+            .map(|()| log::set_max_level(self.logging_level.to_level_filter()))
+            .unwrap();
+    }
+
     pub async fn get_pool(&self) -> Result<Pool<Postgres>, Error> {
         PgPoolOptions::new().connect(&self.database_url).await
     }

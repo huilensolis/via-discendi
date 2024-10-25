@@ -17,14 +17,7 @@ mod router_middleware;
 #[tokio::main]
 async fn main() {
     let config = get_app_config().unwrap();
-
-    let logger: SimpleLogger = SimpleLogger {
-        allowed_level: config.logging_level,
-    };
-
-    log::set_boxed_logger(Box::new(logger))
-        .map(|()| log::set_max_level(LevelFilter::Debug))
-        .unwrap();
+    config.init();
 
     let pool = config.get_pool().await.unwrap();
     let router_global_state = RouterGlobalState { pool };
