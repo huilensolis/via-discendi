@@ -1,4 +1,5 @@
 use axum::{
+    middleware::{self, from_fn},
     routing::{get, post},
     Router,
 };
@@ -10,6 +11,7 @@ use sqlx::postgres::PgPoolOptions;
 mod auth;
 mod logger;
 mod router_common;
+mod router_middleware;
 
 static LOGGER: SimpleLogger = SimpleLogger {
     allowed_level: Level::Info,
@@ -41,6 +43,7 @@ async fn main() {
             "/api/v1/refresh_token",
             get(auth::api::refresh_token_router),
         )
+        .layer(from_fn(router_middleware::trace_time))
         .with_state(router_global_state);
 
     info!("Starting server on port {}", port);
