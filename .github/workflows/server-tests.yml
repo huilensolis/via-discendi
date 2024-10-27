@@ -35,5 +35,9 @@ jobs:
           compose-version: "latest"
       - name: install rustup and cargo
         uses: moonrepo/setup-rust@v1
+      - name: install sqlx
+        run: cargo install sqlx-cli
+      - name: run migration
+        run: cargo sqlx migrate run
       - name: run tests
         run: cargo test
