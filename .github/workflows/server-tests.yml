@@ -6,6 +6,8 @@ defaults:
   run:
     working-directory: apps/api
 
+env:
+  DATABASE_URL: postgres://myuser:mypassword@localhost/mydatabase
 
 jobs:
   run-api-tests:
