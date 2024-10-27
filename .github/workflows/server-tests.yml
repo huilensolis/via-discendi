@@ -1,0 +1,31 @@
+name: Server testing
+run-name: ${{ github.actor }} is testing out ${{ github.ref }} 🚀
+on: [push]
+jobs:
+  run-api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        working-directory: /apps/api/
+      - name: set up docker compose
+        uses: hoverkraft-tech/compose-action@v0.0.0
+        with:
+        # Description: Path to compose file(s). It can be a list of files. It can be
+        # absolute or relative to the current working directory (cwd).
+        #
+        # Default: ./docker-compose.yml
+        compose-file: ""
+
+        # Description: Compose version to use. If null (default), it will use the current
+        # installed version. If "latest", it will install the latest version.
+        #
+        compose-version: "latest"
+      - name: install rustup and cargo
+        uses: moonrepo/setup-rust@v1
+      - name: install sqlx
+        run: cargo install sqlx-cli
+      - name: run db migrations 
+        run: cargo sqlx migrate run
+      - name: run tests
+        run: cargo test
