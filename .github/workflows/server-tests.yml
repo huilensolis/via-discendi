@@ -22,7 +22,7 @@ jobs:
           # absolute or relative to the current working directory (cwd).
           #
           # Default: ./docker-compose.yml
-          # compose-file: ""
+          compose-file: "apps/api/docker-compose.yml"
 
           # Description: Compose version to use. If null (default), it will use the current
           # installed version. If "latest", it will install the latest version.
