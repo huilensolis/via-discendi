@@ -11,6 +11,7 @@ defaults:
 
 env:
   DATABASE_URL: postgres://myuser:mypassword@localhost/mydatabase
+  RUST_TEST_THREADS: 1 # running the test on a single thread might make test much slower should be change by mutex on the future
 
 jobs:
   run-api-tests:
