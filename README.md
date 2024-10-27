@@ -1,13 +1,84 @@
-the idea is a website for creating and reading curriculums, which are roadmaps to learn different subjects, with every step in a path containing resources such as names of books, youtube channels and online resources.
+# Via Discendi
 
-users can create roadmaps and edit them. each time a roadmap is released, it is released under a new version, so that users who were following the roadmap before its update, dont lose access to the old version.
+Website for creating and following learning roadmaphs.
 
-a roadmap has a like counter, and an author label, so that people can judge each roadmap, and validate who posted it.
+## MVP
 
-users can search roadmaps based on the roadmap title, label or author.,
+### Use cases
 
-a roadmap is a list of "areas", and each "area" has an article, which contains a title, a description and a list of resource items.
+#### auth
+- [ ] user should be able to log in
+- [ ] user should be able to sign up
+---
+#### roadmaps
+- [ ] create roadmap
+- [ ] add title
+- [ ] set user as roadmap author 
+- [ ] allow user to bookmark roadmap (replacement for likes)
+- [ ] show roadmap bookmarks count
+##### versions
+- [ ] set default version to v0.0.0
+- [ ] each time a roadmap is edited, it is published under a new version
+- [ ] user can navigate between roadmap versions
+- [ ] roadmap author can delete roadmap versions
+- [ ] roadmap author can delete all roadmap versions
+##### create areas
+- [ ] create areas
+- [ ] edit area title
+- [ ] edit area description
+- [ ] add area resources (books)
+- [ ] link areas (one area to another)
+- [ ] move area position
+##### area status
+- [ ] add status to area
+- [ ] update status to "done" or "on course"
 
-a resource item can be a text or a link (render open graph).
+#### search roadmaps
+- [ ] filter by title
+- [ ] filter by author
 
-each "area" can be linked to another, even to multiple "areas"
+### Data Modeling
+
+#### user
+- id
+- email
+- password (hashed)
+- username
+- name
+    - first-name
+    - last-name
+- updated_at
+- created_at
+
+#### roadmap
+- id
+- version
+- author
+- author: fk(user.id)
+- bookmarkcount
+- title
+- description
+- created_at
+- updated_at
+
+#### area
+- id
+- roadmap_id: fk(roadmap.id)
+- title
+- description
+- books: all books that reference this area
+- position_x
+- position_y
+
+#### book
+- id
+- title
+- link
+- area: fk(area.id)
+
+#### area edge
+- from_area_id
+- to_area_id
+
+#### user progress
+still need to work on planning this
