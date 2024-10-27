@@ -1,0 +1,39 @@
+name: Server testing
+run-name: ${{ github.actor }} is testing out ${{ github.ref }} 🚀
+on:
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    working-directory: apps/api
+
+env:
+  DATABASE_URL: postgres://myuser:mypassword@localhost/mydatabase
+
+jobs:
+  run-api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: log cwd
+        run: pwd
+      - name: set up docker compose
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          # Description: Path to compose file(s). It can be a list of files. It can be
+          # absolute or relative to the current working directory (cwd).
+          #
+          # Default: ./docker-compose.yml
+          compose-file: "apps/api/docker-compose.yml"
+
+          # Description: Compose version to use. If null (default), it will use the current
+          # installed version. If "latest", it will install the latest version.
+          #
+          compose-version: "latest"
+      - name: install rustup and cargo
+        uses: moonrepo/setup-rust@v1
+      - name: run tests
+        run: cargo test
