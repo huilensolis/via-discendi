@@ -7,7 +7,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: /apps/api/
+        working-directory: apps/api/
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
