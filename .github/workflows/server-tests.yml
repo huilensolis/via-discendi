@@ -23,7 +23,7 @@ jobs:
         # Description: Compose version to use. If null (default), it will use the current
         # installed version. If "latest", it will install the latest version.
         #
-        compose-version: "latest"
+        compose-version: latest
       - name: install rustup and cargo
         uses: moonrepo/setup-rust@v1
       - name: install sqlx
