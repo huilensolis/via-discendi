@@ -14,16 +14,16 @@ jobs:
       - name: set up docker compose
         uses: hoverkraft-tech/compose-action@v0.0.0
         with:
-        # Description: Path to compose file(s). It can be a list of files. It can be
-        # absolute or relative to the current working directory (cwd).
-        #
-        # Default: ./docker-compose.yml
-        # compose-file: ""
+          # Description: Path to compose file(s). It can be a list of files. It can be
+          # absolute or relative to the current working directory (cwd).
+          #
+          # Default: ./docker-compose.yml
+          # compose-file: ""
 
-        # Description: Compose version to use. If null (default), it will use the current
-        # installed version. If "latest", it will install the latest version.
-        #
-        compose-version: latest
+          # Description: Compose version to use. If null (default), it will use the current
+          # installed version. If "latest", it will install the latest version.
+          #
+          compose-version: "latest"
       - name: install rustup and cargo
         uses: moonrepo/setup-rust@v1
       - name: install sqlx
