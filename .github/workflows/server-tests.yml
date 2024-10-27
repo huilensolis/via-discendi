@@ -1,6 +1,9 @@
 name: Server testing
 run-name: ${{ github.actor }} is testing out ${{ github.ref }} 🚀
-on: [push]
+on:
+  pull_request:
+    branches:
+      - main
 
 defaults:
   run:
