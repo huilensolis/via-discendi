@@ -4,10 +4,13 @@ on: [push]
 jobs:
   run-api-tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: /apps/api/
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-        working-directory: /apps/api/
       - name: set up docker compose
         uses: hoverkraft-tech/compose-action@v0.0.0
         with:
@@ -15,7 +18,7 @@ jobs:
         # absolute or relative to the current working directory (cwd).
         #
         # Default: ./docker-compose.yml
-        compose-file: ""
+        # compose-file: ""
 
         # Description: Compose version to use. If null (default), it will use the current
         # installed version. If "latest", it will install the latest version.
