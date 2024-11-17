@@ -5,7 +5,7 @@ use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
 };
 use chrono::{Duration, NaiveDateTime};
-use log::{debug, error};
+use log::error;
 use rand::{distributions::Alphanumeric, Rng};
 use sqlx::{
     postgres::{PgPool, PgQueryResult},
