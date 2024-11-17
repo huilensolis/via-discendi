@@ -10,6 +10,7 @@ use sqlx::postgres::PgPoolOptions;
 
 mod auth;
 mod logger;
+mod roadmap;
 mod router_common;
 mod router_middleware;
 
