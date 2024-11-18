@@ -21,7 +21,13 @@ pub struct Roadmaps {
 pub struct UserRoadmaps {
     user_id: String,
     roadmap_id: String,
-    completed_areas: Vec<String>, //NOTE: store id of areas
+    created_at: Option<NaiveDateTime>,
+    updated_at: Option<NaiveDateTime>,
+}
+
+pub struct UserAreas {
+    user_roadmap_id: String,
+    completed: bool,
     created_at: Option<NaiveDateTime>,
     updated_at: Option<NaiveDateTime>,
 }
@@ -30,12 +36,18 @@ pub struct UserRoadmaps {
 pub struct RoadmapLikes {
     user_id: String,
     roadmap_id: String,
+
+    created_at: Option<NaiveDateTime>,
+    updated_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug)]
 pub struct RoadmapBookmarkers {
     user_id: String,
     roadmap_id: String,
+
+    created_at: Option<NaiveDateTime>,
+    updated_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug)]
