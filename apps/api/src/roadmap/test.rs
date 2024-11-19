@@ -5,7 +5,7 @@ mod tests {
     async fn test_add_roadmap() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
     }

@@ -15,7 +15,7 @@ mod tests {
     async fn test_add_user() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
 
@@ -43,7 +43,7 @@ mod tests {
     async fn test_find_user() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
 
@@ -77,7 +77,7 @@ mod tests {
     async fn test_sign_up() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
 
@@ -108,7 +108,7 @@ mod tests {
     async fn test_login() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
 
@@ -135,7 +135,7 @@ mod tests {
     async fn test_create_user_session() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
 
