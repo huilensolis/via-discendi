@@ -3,7 +3,7 @@ mod tests {
 
     use chrono::{Duration, Local};
     use core::panic;
-    use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
+    use sqlx::postgres::PgPoolOptions;
     use std::cmp::Ordering;
 
     use crate::auth::{
@@ -18,11 +18,6 @@ mod tests {
             .connect("postgres://myuser:mypassword@localhost/mydatabase")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mock_user = User {
             username: String::from("test"),
@@ -51,11 +46,6 @@ mod tests {
             .connect("postgres://myuser:mypassword@localhost/mydatabase")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mock_user = User {
             username: String::from("test2"),
@@ -91,11 +81,6 @@ mod tests {
             .await
             .unwrap();
 
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
-
         let mut mock_user = User {
             username: String::from("test3"),
             email: String::from("test3@gmail.com"),
@@ -127,11 +112,6 @@ mod tests {
             .await
             .unwrap();
 
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
-
         let mut mock_user = User {
             username: String::from("test5"),
             email: String::from("test5@gmail.com"),
@@ -158,11 +138,6 @@ mod tests {
             .connect("postgres://myuser:mypassword@localhost/mydatabase")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mut mock_user = User {
             username: String::from("test4"),

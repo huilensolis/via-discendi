@@ -103,19 +103,6 @@ async fn update_roadmap(roadmap: &Roadmaps, pool: &PgPool) -> Result<PgQueryResu
     query
 }
 
-async fn delete_roadmap(roadmap_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
-        r#"
-            DELETE FROM ROADMAPS WHERE ID = $1
-        "#,
-        roadmap_id
-    )
-    .execute(pool)
-    .await;
-
-    query
-}
-
 //TODO: for now using like is fine i guess but try to migrate it to full text search later on
 async fn find_roadmap(
     roadmap_name: String,
@@ -237,7 +224,29 @@ async fn update_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx
 
 //TODO: probably use soft delete
 async fn delete_area(area_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    todo!()
+    let query = sqlx::query!(
+        r#"
+        DELETE FROM ROADMAP_AREAS WHERE ID = $1
+    "#,
+        area_id
+    )
+    .execute(pool)
+    .await;
+
+    query
+}
+
+async fn delete_roadmap(roadmap_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    let query = sqlx::query!(
+        r#"
+            DELETE FROM ROADMAPS WHERE ID = $1
+        "#,
+        roadmap_id
+    )
+    .execute(pool)
+    .await;
+
+    query
 }
 
 async fn like_roadmap(roadmap_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
