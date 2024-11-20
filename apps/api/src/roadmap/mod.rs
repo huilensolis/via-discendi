@@ -18,10 +18,10 @@ pub struct Roadmaps {
     updated_at: Option<NaiveDateTime>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Areas {
     id: String,
-    parent_id: String,
+    parent_id: Option<String>,
     roadmap_id: String,
     title: String,
     description: Option<String>,
@@ -225,7 +225,7 @@ async fn get_roadmap_by_id(
                     id: record.area_id.unwrap_or("".to_string()),
                     title: record.area_title.unwrap_or("".to_string()),
                     description: record.area_description,
-                    parent_id: record.area_parent_id.unwrap_or("".to_string()),
+                    parent_id: record.area_parent_id,
                     roadmap_id: record.roadmap_id.clone(),
                     created_at: None,
                     updated_at: None,
@@ -250,18 +250,19 @@ async fn get_roadmap_by_id(
     }
 }
 
-async fn add_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+async fn add_areas(area: Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let query = query!(
         r#"
             INSERT INTO ROADMAP_AREAS
-                (ID, PARENT_ID, TITLE, DESCRIPTION)
+                (ID, PARENT_ID, TITLE, DESCRIPTION, ROADMAP_ID)
             VALUES
-                ($1, $2, $3, $4)
+                ($1, $2, $3, $4, $5)
         "#,
         area.id,
         area.parent_id,
         area.title,
-        area.description
+        area.description,
+        area.roadmap_id
     )
     .execute(pool)
     .await;
@@ -269,7 +270,7 @@ async fn add_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::E
     query
 }
 
-async fn update_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+async fn update_areas(area: Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let query = query!(
         r#"
             UPDATE ROADMAP_AREAS
