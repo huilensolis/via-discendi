@@ -130,7 +130,9 @@ async fn find_roadmap(
             UPDATED_AT
         FROM
             ROADMAPS
-        WHERE TITLE ILIKE $1
+        WHERE 
+            (TITLE = '' OR TITLE ILIKE $1) AND
+            published = true
         LIMIT $2
         OFFSET $3
     "#,

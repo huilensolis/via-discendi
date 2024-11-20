@@ -154,7 +154,7 @@ mod tests {
 
         //waiting for all the concurrent request result
         for roadmap in add_roadmap_futures {
-            let result = roadmap.await.unwrap();
+            let _ = roadmap.await.unwrap();
         }
 
         let result = get_roadmaps(0, 5, &pool).await.unwrap();
