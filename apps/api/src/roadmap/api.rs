@@ -1,14 +1,14 @@
 use axum::{
     body::Body,
+    extract::ws::WebSocket,
     extract::{Path, Query, State},
     http::{Response, StatusCode},
     Json,
 };
-use axum_macros::debug_handler;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use log::error;
+use log::{error, info};
 
 use crate::{
     router_common::{CreateResponse, RouterGlobalState},
@@ -37,6 +37,8 @@ pub struct AddAreaRequest {
     roadmap_id: String,
     title: String,
     description: Option<String>,
+    x: f64,
+    y: f64,
 }
 
 #[derive(Deserialize)]
@@ -130,7 +132,6 @@ pub async fn add_roadmap_router(
         .unwrap();
 }
 
-#[debug_handler]
 pub async fn update_roadmap_router(
     State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<UpdateRoadmapRequest>,
@@ -280,6 +281,35 @@ pub async fn get_roadmap_detail_router(
                 .status(StatusCode::BAD_REQUEST)
                 .body(Body::from(response))
                 .unwrap();
+        }
+    }
+}
+
+//TODO: add handler for handling different type of update on the area be it for updating or
+//creating area
+pub async fn roadmap_area_websocket(
+    mut socket: WebSocket,
+    State(router_global_state): State<RouterGlobalState>,
+    Path(roadmap_id): Path<String>,
+) {
+    while let Some(msg) = socket.recv().await {
+        match msg {
+            Ok(message) => {
+                let res: Result<AddAreaRequest, serde_json::Error> =
+                    serde_json::from_str(message.to_text().unwrap_or(""));
+
+                match res {
+                    Ok(request) => {}
+                    Err(err) => {
+                        error!("[roadmap_area_websocket][add_area] Failed adding area");
+                        continue;
+                    }
+                }
+            }
+            Err(err) => {
+                info!("User disconnect");
+                return;
+            }
         }
     }
 }

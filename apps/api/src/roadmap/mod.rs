@@ -26,6 +26,9 @@ pub struct Areas {
     title: String,
     description: Option<String>,
 
+    x: f64,
+    y: f64,
+
     created_at: Option<NaiveDateTime>,
     updated_at: Option<NaiveDateTime>,
 }
@@ -205,7 +208,9 @@ async fn get_roadmap_by_id(
             ra.id as "area_id?",
             ra.title as "area_title?",
             ra.description as "area_description?",
-            ra.parent_id as "area_parent_id?"
+            ra.parent_id as "area_parent_id?",
+            ra.x as "x?", 
+            ra.y as "y?"
         FROM ROADMAPS R 
         LEFT JOIN
             ROADMAP_AREAS RA ON R.ID = RA.ROADMAP_ID
@@ -229,6 +234,8 @@ async fn get_roadmap_by_id(
                     description: record.area_description,
                     parent_id: record.area_parent_id,
                     roadmap_id: record.roadmap_id.clone(),
+                    x: record.x.unwrap_or(0.0),
+                    y: record.y.unwrap_or(0.0),
                     created_at: None,
                     updated_at: None,
                 };
@@ -256,15 +263,17 @@ async fn add_areas(area: Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Er
     let query = query!(
         r#"
             INSERT INTO ROADMAP_AREAS
-                (ID, PARENT_ID, TITLE, DESCRIPTION, ROADMAP_ID)
+                (ID, PARENT_ID, TITLE, DESCRIPTION, ROADMAP_ID, X, Y)
             VALUES
-                ($1, $2, $3, $4, $5)
+                ($1, $2, $3, $4, $5, $6, $7)
         "#,
         area.id,
         area.parent_id,
         area.title,
         area.description,
-        area.roadmap_id
+        area.roadmap_id,
+        area.x,
+        area.y,
     )
     .execute(pool)
     .await;
@@ -279,14 +288,18 @@ async fn update_areas(area: Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx:
             SET 
                 parent_id = $1,
                 title = $2,
-                description = $3
+                description = $3,
+                X = $5,
+                Y = $6
                 WHERE 
                     id = $4
         "#,
         area.parent_id,
         area.title,
         area.description,
-        area.id
+        area.id,
+        area.x,
+        area.y
     )
     .execute(pool)
     .await;
