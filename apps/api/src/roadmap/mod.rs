@@ -1,11 +1,12 @@
 use chrono::NaiveDateTime;
-use sqlx;
 use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
+use sqlx::{self, query};
 
 pub mod api;
+mod test;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Roadmaps {
     // NOTE: both id and version makes the unique identifier for the roadmap
     id: String,
@@ -15,6 +16,25 @@ pub struct Roadmaps {
     published: Option<bool>,
     created_at: Option<NaiveDateTime>,
     updated_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug)]
+pub struct Areas {
+    id: String,
+    parent_id: String,
+    roadmap_id: String,
+    title: String,
+    description: Option<String>,
+
+    created_at: Option<NaiveDateTime>,
+    updated_at: Option<NaiveDateTime>,
+}
+
+pub struct RoadmapWithAreas {
+    roadmap_id: String,
+    roadmap_title: String,
+    roadmap_description: String,
+    areas: Vec<Areas>,
 }
 
 pub struct UserRoadmaps {
@@ -49,21 +69,8 @@ pub struct RoadmapBookmarkers {
     updated_at: Option<NaiveDateTime>,
 }
 
-#[derive(Debug)]
-pub struct Areas {
-    id: String,
-    parent_id: String,
-    roadmap_id: String,
-    title: String,
-    description: String,
-    things_to_learn: Vec<String>,
-
-    created_at: Option<NaiveDateTime>,
-    updated_at: Option<NaiveDateTime>,
-}
-
-async fn add_roadmap(roadmap: &Roadmaps, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+async fn add_roadmap(roadmap: Roadmaps, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    let query = query!(
         r#"
             INSERT INTO ROADMAPS 
                 (ID, TITLE, DESCRIPTION, PUBLISHER)
@@ -81,8 +88,8 @@ async fn add_roadmap(roadmap: &Roadmaps, pool: &PgPool) -> Result<PgQueryResult,
     query
 }
 
-async fn update_roadmap(roadmap: &Roadmaps, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+async fn update_roadmap(roadmap: Roadmaps, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    let query = query!(
         r#"
             UPDATE ROADMAPS
                 SET TITLE = $1,
@@ -105,7 +112,7 @@ async fn update_roadmap(roadmap: &Roadmaps, pool: &PgPool) -> Result<PgQueryResu
 
 //TODO: for now using like is fine i guess but try to migrate it to full text search later on
 async fn find_roadmap(
-    roadmap_name: String,
+    roadmap_title: String,
     limit: i64,
     offset: i64,
     pool: &PgPool,
@@ -127,7 +134,7 @@ async fn find_roadmap(
         LIMIT $2
         OFFSET $3
     "#,
-        format!("%{}%", roadmap_name),
+        format!("%{}%", roadmap_title),
         limit,
         offset
     )
@@ -169,8 +176,10 @@ async fn get_roadmaps(
             UPDATED_AT
         FROM
             ROADMAPS
+        ORDER BY CREATED_AT
         LIMIT $1
         OFFSET $2
+        
     "#,
         limit,
         offset
@@ -181,8 +190,66 @@ async fn get_roadmaps(
     query
 }
 
+async fn get_roadmap_by_id(
+    roadmap_id: String,
+    pool: &PgPool,
+) -> Result<RoadmapWithAreas, sqlx::Error> {
+    match query!(
+        r#"
+        SELECT 
+            r.id as roadmap_id,
+            r.title as roadmap_title, 
+            r.description as roadmap_description,
+            ra.id as area_id,
+            ra.title as area_title,
+            ra.description as area_description,
+            ra.parent_id as area_parent_id
+        FROM ROADMAPS R 
+        LEFT JOIN
+            ROADMAP_AREAS RA ON R.ID = RA.ROADMAP_ID
+        WHERE 
+            R.ID = $1
+        "#,
+        roadmap_id
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(records) => {
+            let mut roadmap_id = "".to_string();
+            let mut roadmap_title = "".to_string();
+            let mut roadmap_description = "".to_string();
+            let areas: Vec<_> = Vec::new();
+
+            for record in records {
+                let area = Areas {
+                    id: record.area_id,
+                    title: record.area_title,
+                    description: record.area_description,
+                    parent_id: record.area_parent_id,
+                    roadmap_id: record.roadmap_id,
+                    created_at: None,
+                    updated_at: None,
+                };
+                areas.push(area);
+                roadmap_id = record.roadmap_id;
+                roadmap_title = record.roadmap_title;
+                roadmap_description = record.description;
+            }
+
+            return Ok(RoadmapWithAreas {
+                roadmap_id,
+                roadmap_description,
+                roadmap_title,
+                areas,
+            });
+        }
+        Err(err) => return Err(err),
+    }
+}
+
 async fn add_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+    let query = query!(
         r#"
             INSERT INTO ROADMAP_AREAS
                 (ID, PARENT_ID, TITLE, DESCRIPTION)
@@ -201,7 +268,7 @@ async fn add_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::E
 }
 
 async fn update_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+    let query = query!(
         r#"
             UPDATE ROADMAP_AREAS
             SET 
@@ -224,7 +291,7 @@ async fn update_areas(area: &Areas, pool: &PgPool) -> Result<PgQueryResult, sqlx
 
 //TODO: probably use soft delete
 async fn delete_area(area_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+    let query = query!(
         r#"
         DELETE FROM ROADMAP_AREAS WHERE ID = $1
     "#,
@@ -237,7 +304,7 @@ async fn delete_area(area_id: String, pool: &PgPool) -> Result<PgQueryResult, sq
 }
 
 async fn delete_roadmap(roadmap_id: String, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let query = sqlx::query!(
+    let query = query!(
         r#"
             DELETE FROM ROADMAPS WHERE ID = $1
         "#,

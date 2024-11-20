@@ -13,6 +13,7 @@ mod logger;
 mod roadmap;
 mod router_common;
 mod router_middleware;
+mod utils;
 
 static LOGGER: SimpleLogger = SimpleLogger {
     allowed_level: Level::Debug,
