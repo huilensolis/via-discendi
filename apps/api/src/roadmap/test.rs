@@ -1,8 +1,8 @@
 #[cfg(test)]
 
 mod tests {
+    use core::panic;
 
-    use serde::de::value;
     use sqlx::postgres::PgPoolOptions;
 
     use crate::{
@@ -127,15 +127,15 @@ mod tests {
 
         let mock_user = User {
             username: generate_random_str(DEFAULT_RANDOM_LENGTH),
-            name: "Publisher 2".to_string(),
-            email: "publisher2@pgmail.com".to_string(),
+            name: "Publisher 53".to_string(),
+            email: "publisher53@pgmail.com".to_string(),
             password: "password".to_string(),
             created_at: None,
             updated_at: None,
         };
 
         let total_roadmap = 10;
-        let _ = add_user(&mock_user, &pool);
+        let _ = add_user(&mock_user, &pool).await;
         let mut add_roadmap_futures: Vec<_> = Vec::new();
 
         for _i in 0..total_roadmap {
@@ -155,13 +155,19 @@ mod tests {
 
         //waiting for all the concurrent request result
         for roadmap in add_roadmap_futures {
-            let _ = roadmap.await;
+            let result = roadmap.await.unwrap();
         }
 
         let result = get_roadmaps(0, 5, &pool).await.unwrap();
-        assert_eq!(result.len(), 5);
+        assert_eq!(
+            result.len(),
+            5,
+            "getting roadmap should have shown 5 roadmaps found {} instead",
+            result.len()
+        );
     }
 
+    #[tokio::test]
     async fn test_find_roadmap() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
@@ -180,6 +186,8 @@ mod tests {
             created_at: None,
             updated_at: None,
         };
+
+        let _ = add_user(&mock_user, &pool).await;
 
         for i in 0..total_roadmap {
             add_roadmap_futures.push(add_roadmap(
@@ -213,6 +221,7 @@ mod tests {
         }
     }
 
+    #[tokio::test]
     async fn test_get_user_roadmap() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
@@ -249,6 +258,11 @@ mod tests {
             ));
         }
 
+        //waiting for all the concurrent request result
+        for roadmap in add_roadmap_futures {
+            let result = roadmap.await.unwrap();
+        }
+
         match get_user_roadmaps(mock_user.username.clone(), &pool).await {
             Ok(value) => {
                 if value.len() != 10 {
@@ -259,6 +273,7 @@ mod tests {
         }
     }
 
+    #[tokio::test]
     async fn test_delete_roadmap() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
@@ -276,8 +291,9 @@ mod tests {
         };
 
         let _ = add_user(&mock_user, &pool).await;
+        let roadmap_id = generate_random_str(DEFAULT_RANDOM_LENGTH);
         let roadmap = Roadmaps {
-            id: generate_random_str(DEFAULT_RANDOM_LENGTH),
+            id: roadmap_id.clone(),
             title: generate_random_str(DEFAULT_RANDOM_LENGTH),
             description: None,
             publisher: mock_user.username.clone(),
@@ -286,9 +302,16 @@ mod tests {
             updated_at: None,
         };
 
-        match delete_roadmap(roadmap.id, &pool).await {
+        let _ = add_roadmap(roadmap, &pool).await;
+
+        match delete_roadmap(roadmap_id, &pool).await {
             Ok(value) => {
-                assert!(value.rows_affected() == 1)
+                if value.rows_affected() != 1 {
+                    panic!(
+                        "affected row should have been 1 found {} instead",
+                        value.rows_affected()
+                    );
+                }
             }
             Err(err) => panic!("{}", err),
         }

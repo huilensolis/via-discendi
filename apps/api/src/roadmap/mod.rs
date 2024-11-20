@@ -33,7 +33,7 @@ pub struct Areas {
 pub struct RoadmapWithAreas {
     roadmap_id: String,
     roadmap_title: String,
-    roadmap_description: String,
+    roadmap_description: Option<String>,
     areas: Vec<Areas>,
 }
 
@@ -200,10 +200,10 @@ async fn get_roadmap_by_id(
             r.id as roadmap_id,
             r.title as roadmap_title, 
             r.description as roadmap_description,
-            ra.id as area_id,
-            ra.title as area_title,
-            ra.description as area_description,
-            ra.parent_id as area_parent_id
+            ra.id as "area_id?",
+            ra.title as "area_title?",
+            ra.description as "area_description?",
+            ra.parent_id as "area_parent_id?"
         FROM ROADMAPS R 
         LEFT JOIN
             ROADMAP_AREAS RA ON R.ID = RA.ROADMAP_ID
@@ -218,23 +218,22 @@ async fn get_roadmap_by_id(
         Ok(records) => {
             let mut roadmap_id = "".to_string();
             let mut roadmap_title = "".to_string();
-            let mut roadmap_description = "".to_string();
-            let areas: Vec<_> = Vec::new();
-
+            let mut roadmap_description = None;
+            let mut areas: Vec<_> = Vec::new();
             for record in records {
                 let area = Areas {
-                    id: record.area_id,
-                    title: record.area_title,
+                    id: record.area_id.unwrap_or("".to_string()),
+                    title: record.area_title.unwrap_or("".to_string()),
                     description: record.area_description,
-                    parent_id: record.area_parent_id,
-                    roadmap_id: record.roadmap_id,
+                    parent_id: record.area_parent_id.unwrap_or("".to_string()),
+                    roadmap_id: record.roadmap_id.clone(),
                     created_at: None,
                     updated_at: None,
                 };
                 areas.push(area);
-                roadmap_id = record.roadmap_id;
+                roadmap_id = record.roadmap_id.clone();
                 roadmap_title = record.roadmap_title;
-                roadmap_description = record.description;
+                roadmap_description = record.roadmap_description;
             }
 
             return Ok(RoadmapWithAreas {
@@ -244,7 +243,10 @@ async fn get_roadmap_by_id(
                 areas,
             });
         }
-        Err(err) => return Err(err),
+        Err(err) => {
+            println!("{}", err);
+            return Err(err);
+        }
     }
 }
 

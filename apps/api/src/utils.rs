@@ -1,4 +1,4 @@
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 pub fn generate_random_str(length: u8) -> String {
     let random_string: String = thread_rng()
