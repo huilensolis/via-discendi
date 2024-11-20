@@ -46,7 +46,7 @@ fn parse_cookie_value(value: String) -> HashMap<String, String> {
 }
 
 pub async fn login_router(
-    State(router_global_state): State<RouterGlobalState>, // Use '_ to elide the explicit lifetime
+    State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<LoginRequest>,
 ) -> Response<Body> {
     let result = login(

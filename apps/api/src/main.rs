@@ -1,6 +1,6 @@
 use axum::{
-    middleware::{self, from_fn},
-    routing::{get, post},
+    middleware::from_fn,
+    routing::{get, post, put},
     Router,
 };
 use log::{info, Level, LevelFilter, SetLoggerError};
@@ -44,6 +44,13 @@ async fn main() {
         .route(
             "/api/v1/refresh_token",
             get(auth::api::refresh_token_router),
+        )
+        .route("/api/v1/roadmaps", post(roadmap::api::add_roadmap_router))
+        .route("/api/v1/roadmaps", put(roadmap::api::update_roadmap_router))
+        .route("/api/v1/roadmaps", get(roadmap::api::find_roadmap_router))
+        .route(
+            "/api/v1/roadmaps/:roadmap_id",
+            get(roadmap::api::get_roadmap_detail_router),
         )
         .layer(from_fn(router_middleware::trace_time))
         .with_state(router_global_state);

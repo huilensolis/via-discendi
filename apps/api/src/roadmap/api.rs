@@ -4,6 +4,7 @@ use axum::{
     http::{Response, StatusCode},
     Json,
 };
+use axum_macros::debug_handler;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +24,7 @@ pub struct AddRoadmapRequest {
     description: Option<String>,
 }
 
+#[derive(Deserialize)]
 pub struct UpdateRoadmapRequest {
     roadmap_id: String,
     user_id: String,
@@ -123,11 +125,12 @@ pub async fn add_roadmap_router(
     .unwrap();
 
     return Response::builder()
-        .status(StatusCode::BAD_REQUEST)
+        .status(StatusCode::OK)
         .body(Body::from(response))
         .unwrap();
 }
 
+#[debug_handler]
 pub async fn update_roadmap_router(
     State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<UpdateRoadmapRequest>,

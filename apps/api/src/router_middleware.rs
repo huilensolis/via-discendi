@@ -6,10 +6,12 @@ use log::info;
 pub async fn trace_time(request: Request, next: Next) -> Response {
     let start_time = Instant::now();
     let path = request.uri().path().to_string();
+    let method = request.method().to_string();
     let response = next.run(request).await;
     info!(
-        "{} time taken: {}ms",
+        "{}:{} time taken: {}ms",
         path,
+        method,
         start_time.elapsed().as_millis()
     );
     response
