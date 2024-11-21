@@ -91,8 +91,9 @@ pub async fn add_roadmap_router(
     State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<AddRoadmapRequest>,
 ) -> Response<Body> {
+    let roadmap_id = generate_random_str(DEFAULT_ID_LENGTH);
     let roadmap = Roadmaps {
-        id: generate_random_str(DEFAULT_ID_LENGTH),
+        id: roadmap_id.to_string(),
         title: request.title,
         description: request.description,
         publisher: request.user_id,
@@ -116,6 +117,7 @@ pub async fn add_roadmap_router(
         let response = serde_json::to_string(&CreateResponse {
             is_successful: false,
             message: String::from("Fail on adding roadmap please try again"),
+            id: Some(roadmap_id),
         })
         .unwrap();
 
@@ -128,6 +130,7 @@ pub async fn add_roadmap_router(
     let response = serde_json::to_string(&CreateResponse {
         is_successful: true,
         message: String::from("Roadmap successfully added"),
+        id: None,
     })
     .unwrap();
 
@@ -142,7 +145,7 @@ pub async fn update_roadmap_router(
     Json(request): Json<UpdateRoadmapRequest>,
 ) -> Response<Body> {
     let roadmap = Roadmaps {
-        id: request.roadmap_id,
+        id: request.roadmap_id.to_string(),
         title: request.title.unwrap_or("".to_string()),
         description: request.description,
         publisher: request.user_id,
@@ -166,6 +169,7 @@ pub async fn update_roadmap_router(
         let response = serde_json::to_string(&CreateResponse {
             is_successful: false,
             message: String::from("Fail on updating roadmap please try again"),
+            id: None,
         })
         .unwrap();
 
@@ -178,6 +182,7 @@ pub async fn update_roadmap_router(
     let response = serde_json::to_string(&CreateResponse {
         is_successful: true,
         message: String::from("Roadmap successfully updated"),
+        id: Some(request.roadmap_id),
     })
     .unwrap();
 
@@ -228,6 +233,7 @@ pub async fn find_roadmap_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: false,
                 message: String::from("Fail on finding roadmap please try again"),
+                id: None,
             })
             .unwrap();
 
@@ -279,6 +285,7 @@ pub async fn get_roadmap_detail_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: false,
                 message: String::from("Fail on finding roadmap please try again"),
+                id: None,
             })
             .unwrap();
 
@@ -292,7 +299,7 @@ pub async fn get_roadmap_detail_router(
 
 //TODO: @Performance, this would probably will be slow near future. it might have been better to
 //just update all record at once?
-pub async fn roadmap_area_websocket(
+async fn roadmap_area_websocket(
     mut socket: WebSocket,
     router_global_state: RouterGlobalState,
     roadmap_id: String,
@@ -305,6 +312,7 @@ pub async fn roadmap_area_websocket(
                     is_successful: false,
                     message: "Fail on connecting the editing the roadmap, please try again"
                         .to_string(),
+                    id: None,
                 };
                 let _ = socket
                     .send(axum::extract::ws::Message::Text(
@@ -319,6 +327,7 @@ pub async fn roadmap_area_websocket(
             let response = CreateResponse {
                 is_successful: false,
                 message: "Fail on connecting the editing the roadmap, please try again".to_string(),
+                id: None,
             };
             let _ = socket
                 .send(axum::extract::ws::Message::Text(
@@ -355,6 +364,7 @@ pub async fn roadmap_area_websocket(
                                     let response = serde_json::to_string(&CreateResponse {
                                         is_successful: true,
                                         message: String::from("Area updated"),
+                                        id: None,
                                     })
                                     .unwrap();
 
@@ -373,6 +383,7 @@ pub async fn roadmap_area_websocket(
                                         message: String::from(
                                             "Fail updating area please try again",
                                         ),
+                                        id: None,
                                     })
                                     .unwrap();
 
@@ -386,8 +397,9 @@ pub async fn roadmap_area_websocket(
                             }
                         }
                         None => {
+                            let area_id = generate_random_str(DEFAULT_ID_LENGTH);
                             let area = Areas {
-                                id: generate_random_str(DEFAULT_ID_LENGTH),
+                                id: area_id.to_string(),
                                 parent_id: request.parent_id,
                                 roadmap_id: roadmap_id.to_string(),
                                 title: request.title,
@@ -403,6 +415,7 @@ pub async fn roadmap_area_websocket(
                                     let response = serde_json::to_string(&CreateResponse {
                                         is_successful: true,
                                         message: String::from("Area created"),
+                                        id: Some(area_id),
                                     })
                                     .unwrap();
 
@@ -421,6 +434,7 @@ pub async fn roadmap_area_websocket(
                                         message: String::from(
                                             "Fail creating area please try again",
                                         ),
+                                        id: None,
                                     })
                                     .unwrap();
 
@@ -443,6 +457,7 @@ pub async fn roadmap_area_websocket(
                         let response = serde_json::to_string(&CreateResponse {
                             is_successful: false,
                             message: String::from("Fail creating area please try again"),
+                            id: None,
                         })
                         .unwrap();
 
@@ -464,7 +479,7 @@ pub async fn roadmap_area_websocket(
     }
 }
 
-async fn area_websocket_router(
+pub async fn area_websocket_router(
     ws: WebSocketUpgrade,
     State(router_global_state): State<RouterGlobalState>,
     Path(roadmap_id): Path<String>,

@@ -52,6 +52,10 @@ async fn main() {
             "/api/v1/roadmaps/:roadmap_id",
             get(roadmap::api::get_roadmap_detail_router),
         )
+        .route(
+            "/api/v1/roadmaps/:roadmap_id/areas",
+            get(roadmap::api::area_websocket_router),
+        )
         .layer(from_fn(router_middleware::trace_time))
         .with_state(router_global_state);
 

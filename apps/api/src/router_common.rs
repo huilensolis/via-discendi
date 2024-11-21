@@ -1,4 +1,3 @@
-use crate::logger::SimpleLogger;
 use serde::Serialize;
 use sqlx::PgPool;
 
@@ -11,4 +10,5 @@ pub struct RouterGlobalState {
 pub struct CreateResponse {
     pub is_successful: bool,
     pub message: String,
+    pub id: Option<String>,
 }
