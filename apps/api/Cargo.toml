@@ -15,4 +15,5 @@ rand = "0.8"  # randomizer lib
 chrono = "0.4" # for datetime dependencies
 serde = { version = "1.0", features = ["derive"] }
 log = { version = "0.4", features = ["std", "serde"] }
-serde_json = "1.0.107"
+serde_json = "1.0.107" # for deserializing structs
+config = "0.13.3" # app config 
