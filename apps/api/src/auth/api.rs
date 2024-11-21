@@ -225,6 +225,7 @@ pub async fn refresh_token_router(
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: true,
                         message: String::from("Token refreshed"),
+                        id: None,
                     })
                     .unwrap();
 

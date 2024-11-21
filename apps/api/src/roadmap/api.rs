@@ -38,7 +38,6 @@ pub struct UpdateRoadmapRequest {
 pub struct UpsertAreaRequest {
     area_id: Option<String>,
     parent_id: Option<String>,
-    roadmap_id: String,
     title: String,
     description: Option<String>,
 
@@ -117,7 +116,7 @@ pub async fn add_roadmap_router(
         let response = serde_json::to_string(&CreateResponse {
             is_successful: false,
             message: String::from("Fail on adding roadmap please try again"),
-            id: Some(roadmap_id),
+            id: None,
         })
         .unwrap();
 
@@ -130,7 +129,7 @@ pub async fn add_roadmap_router(
     let response = serde_json::to_string(&CreateResponse {
         is_successful: true,
         message: String::from("Roadmap successfully added"),
-        id: None,
+        id: Some(roadmap_id),
     })
     .unwrap();
 
