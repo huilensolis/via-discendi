@@ -1,7 +1,6 @@
 use axum::{
     body::Body,
-    extract::ws::WebSocket,
-    extract::{Path, Query, State},
+    extract::{ws::WebSocket, Path, Query, State, WebSocketUpgrade},
     http::{Response, StatusCode},
     Json,
 };
@@ -15,7 +14,10 @@ use crate::{
     utils::generate_random_str,
 };
 
-use super::{add_roadmap, find_roadmap, get_roadmap_by_id, update_roadmap, Roadmaps};
+use super::{
+    add_areas, add_roadmap, find_roadmap, get_roadmap_by_id, roadmap_exist, update_areas,
+    update_roadmap, Areas, Roadmaps,
+};
 
 #[derive(Deserialize)]
 pub struct AddRoadmapRequest {
@@ -33,10 +35,13 @@ pub struct UpdateRoadmapRequest {
 }
 
 #[derive(Deserialize)]
-pub struct AddAreaRequest {
+pub struct UpsertAreaRequest {
+    area_id: Option<String>,
+    parent_id: Option<String>,
     roadmap_id: String,
     title: String,
     description: Option<String>,
+
     x: f64,
     y: f64,
 }
@@ -285,31 +290,184 @@ pub async fn get_roadmap_detail_router(
     }
 }
 
-//TODO: add handler for handling different type of update on the area be it for updating or
-//creating area
+//TODO: @Performance, this would probably will be slow near future. it might have been better to
+//just update all record at once?
 pub async fn roadmap_area_websocket(
     mut socket: WebSocket,
-    State(router_global_state): State<RouterGlobalState>,
-    Path(roadmap_id): Path<String>,
+    router_global_state: RouterGlobalState,
+    roadmap_id: String,
 ) {
+    match roadmap_exist(roadmap_id.clone(), &router_global_state.pool).await {
+        Ok(value) => {
+            if !value {
+                info!("[roadmap_area_websocket] attempted to modify non existing roadmap");
+                let response = CreateResponse {
+                    is_successful: false,
+                    message: "Fail on connecting the editing the roadmap, please try again"
+                        .to_string(),
+                };
+                let _ = socket
+                    .send(axum::extract::ws::Message::Text(
+                        serde_json::to_string(&response).unwrap(),
+                    ))
+                    .await;
+                return;
+            }
+        }
+        Err(err) => {
+            error!("[roadmap_area_websocket]{}", err);
+            let response = CreateResponse {
+                is_successful: false,
+                message: "Fail on connecting the editing the roadmap, please try again".to_string(),
+            };
+            let _ = socket
+                .send(axum::extract::ws::Message::Text(
+                    serde_json::to_string(&response).unwrap(),
+                ))
+                .await;
+            return;
+        }
+    }
+
     while let Some(msg) = socket.recv().await {
         match msg {
             Ok(message) => {
-                let res: Result<AddAreaRequest, serde_json::Error> =
-                    serde_json::from_str(message.to_text().unwrap_or(""));
+                let message_text = message.to_text();
+                let upsert_area_request: Result<UpsertAreaRequest, _> =
+                    serde_json::from_str(message_text.unwrap());
 
-                match res {
-                    Ok(request) => {}
+                match upsert_area_request {
+                    Ok(request) => match request.area_id {
+                        Some(area_id) => {
+                            let area = Areas {
+                                id: area_id,
+                                parent_id: request.parent_id,
+                                roadmap_id: roadmap_id.to_string(),
+                                title: request.title,
+                                description: request.description,
+                                x: request.x,
+                                y: request.y,
+                                created_at: None,
+                                updated_at: Some(Utc::now().naive_utc()),
+                            };
+                            match update_areas(area, &router_global_state.pool).await {
+                                Ok(_) => {
+                                    let response = serde_json::to_string(&CreateResponse {
+                                        is_successful: true,
+                                        message: String::from("Area updated"),
+                                    })
+                                    .unwrap();
+
+                                    if let Err(err) = socket
+                                        .send(axum::extract::ws::Message::Text(response))
+                                        .await
+                                    {
+                                        error!("[roadmap_area_websocket] {}", err);
+                                    }
+                                }
+                                Err(err) => {
+                                    error!("[roadmap_area_websocket] {}", err);
+
+                                    let response = serde_json::to_string(&CreateResponse {
+                                        is_successful: false,
+                                        message: String::from(
+                                            "Fail updating area please try again",
+                                        ),
+                                    })
+                                    .unwrap();
+
+                                    if let Err(err) = socket
+                                        .send(axum::extract::ws::Message::Text(response))
+                                        .await
+                                    {
+                                        error!("[roadmap_area_websocket] {}", err);
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            let area = Areas {
+                                id: generate_random_str(DEFAULT_ID_LENGTH),
+                                parent_id: request.parent_id,
+                                roadmap_id: roadmap_id.to_string(),
+                                title: request.title,
+                                description: request.description,
+                                x: request.x,
+                                y: request.y,
+                                created_at: None,
+                                updated_at: Some(Utc::now().naive_utc()),
+                            };
+
+                            match add_areas(area, &router_global_state.pool).await {
+                                Ok(_) => {
+                                    let response = serde_json::to_string(&CreateResponse {
+                                        is_successful: true,
+                                        message: String::from("Area created"),
+                                    })
+                                    .unwrap();
+
+                                    if let Err(err) = socket
+                                        .send(axum::extract::ws::Message::Text(response))
+                                        .await
+                                    {
+                                        error!("[roadmap_area_websocket] {}", err);
+                                    }
+                                }
+                                Err(err) => {
+                                    error!("[roadmap_area_websocket] {}", err);
+
+                                    let response = serde_json::to_string(&CreateResponse {
+                                        is_successful: false,
+                                        message: String::from(
+                                            "Fail creating area please try again",
+                                        ),
+                                    })
+                                    .unwrap();
+
+                                    if let Err(err) = socket
+                                        .send(axum::extract::ws::Message::Text(response))
+                                        .await
+                                    {
+                                        error!("[roadmap_area_websocket] {}", err);
+                                    }
+                                }
+                            }
+                        }
+                    },
                     Err(err) => {
-                        error!("[roadmap_area_websocket][add_area] Failed adding area");
+                        error!(
+                            "[roadmap_area_websocket] fail on parsing request with cause {}",
+                            err
+                        );
+
+                        let response = serde_json::to_string(&CreateResponse {
+                            is_successful: false,
+                            message: String::from("Fail creating area please try again"),
+                        })
+                        .unwrap();
+
+                        if let Err(err) = socket
+                            .send(axum::extract::ws::Message::Text(response))
+                            .await
+                        {
+                            error!("[roadmap_area_websocket] {}", err);
+                        }
+
                         continue;
                     }
                 }
             }
-            Err(err) => {
-                info!("User disconnect");
-                return;
+            Err(_err) => {
+                continue;
             }
         }
     }
+}
+
+async fn area_websocket_router(
+    ws: WebSocketUpgrade,
+    State(router_global_state): State<RouterGlobalState>,
+    Path(roadmap_id): Path<String>,
+) -> Response<Body> {
+    ws.on_upgrade(|socket| roadmap_area_websocket(socket, router_global_state, roadmap_id))
 }

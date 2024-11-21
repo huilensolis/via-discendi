@@ -195,6 +195,20 @@ async fn get_roadmaps(
     query
 }
 
+async fn roadmap_exist(roadmap_id: String, pool: &PgPool) -> Result<bool, sqlx::Error> {
+    let query = query!(
+        r#"SELECT EXISTS (SELECT 1 FROM ROADMAPS WHERE ID = $1)"#,
+        roadmap_id
+    )
+    .fetch_one(pool)
+    .await;
+
+    match query {
+        Ok(result) => Ok(result.exists.unwrap_or(false)),
+        Err(err) => Err(err),
+    }
+}
+
 async fn get_roadmap_by_id(
     roadmap_id: String,
     pool: &PgPool,
