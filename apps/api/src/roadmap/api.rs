@@ -298,6 +298,15 @@ pub async fn get_roadmap_detail_router(
 
 //TODO: @Performance, this would probably will be slow near future. it might have been better to
 //just update all record at once?
+// this will be really slow if the update is too much, one way to optimize this is to
+// 1. put tick rate like in video game, in this case for every 1 or 3 seconds might be fine.
+// 2. decide whether we should use buffered approach or temporary table or let it be for now.
+// 3. on the client, it's mandatory to optimize for only sending areas that only changes, don't
+//    send data that dont change to reduce load on the network
+// 4. Using compression for compressing message or a better protocol on the websocket instead of
+//    using json, but for now we let it be.
+// 5. don't allow for client to connect on the same roadmap on different socket, it will cause
+//    complicated conflict resolution
 async fn roadmap_area_websocket(
     mut socket: WebSocket,
     router_global_state: RouterGlobalState,
