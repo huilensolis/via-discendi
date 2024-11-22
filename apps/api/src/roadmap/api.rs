@@ -314,6 +314,7 @@ async fn roadmap_area_websocket(
 ) {
     match roadmap_exist(roadmap_id.clone(), &router_global_state.pool).await {
         Ok(value) => {
+            println!("{} exits? {}", roadmap_id.clone(), value);
             if !value {
                 info!("[roadmap_area_websocket] attempted to modify non existing roadmap");
                 let response = CreateResponse {

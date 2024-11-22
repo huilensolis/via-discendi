@@ -8,10 +8,20 @@ mod tests {
         auth::{add_user, User},
         roadmap::{
             add_areas, add_roadmap, delete_area, delete_roadmap, find_roadmap, get_roadmap_by_id,
-            get_roadmaps, get_user_roadmaps, update_areas, update_roadmap, Areas, Roadmaps,
+            get_roadmaps, get_user_roadmaps, roadmap_exist, update_areas, update_roadmap, Areas,
+            Roadmaps,
         },
         utils::generate_random_str,
     };
+
+    use core::panic;
+    use std::process::{Child, Command, Stdio};
+
+    use futures_util::sink::SinkExt;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use tokio::time::{self, Duration};
+    use tokio_tungstenite::{connect_async, tungstenite::Message};
 
     const DEFAULT_RANDOM_LENGTH: u8 = 10;
 
@@ -363,6 +373,8 @@ mod tests {
                 description: None,
                 created_at: None,
                 updated_at: None,
+                x: 0.0,
+                y: 0.0,
             };
             previous_area_id = Some(area.id.clone());
             fut_add_areas.push(add_areas(area, &pool));
@@ -426,6 +438,8 @@ mod tests {
             description: None,
             created_at: None,
             updated_at: None,
+            x: 0.0,
+            y: 0.0,
         };
 
         let updated_area = Areas {
@@ -490,6 +504,8 @@ mod tests {
             description: None,
             created_at: None,
             updated_at: None,
+            x: 0.0,
+            y: 0.0,
         };
 
         let _ = add_areas(area, &pool).await;
@@ -504,5 +520,121 @@ mod tests {
             }
             Err(err) => panic!("{}", err),
         }
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn load_test_area_update() {
+        let connections = 10;
+        let updates_per_second = 100;
+
+        let test_duration = Duration::from_secs(5);
+        let server_runtime = Duration::from_secs(3);
+
+        let mut child = Command::new("cargo")
+            .arg("run")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .expect("The server failed to run");
+
+        tokio::time::sleep(server_runtime).await;
+
+        let running = Arc::new(AtomicBool::new(true));
+
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect("postgres://myuser:mypassword@localhost/test_database")
+            .await
+            .unwrap();
+
+        let mock_email = format!("{}@gmail.com", generate_random_str(DEFAULT_RANDOM_LENGTH));
+
+        let mock_user = User {
+            username: generate_random_str(DEFAULT_RANDOM_LENGTH),
+            name: "Publisher 2".to_string(),
+            email: mock_email,
+            password: "password".to_string(),
+            created_at: None,
+            updated_at: None,
+        };
+
+        let _ = add_user(&mock_user, &pool).await;
+
+        let roadmap_id = generate_random_str(DEFAULT_RANDOM_LENGTH);
+
+        let roadmap = Roadmaps {
+            id: roadmap_id.clone(),
+            title: generate_random_str(DEFAULT_RANDOM_LENGTH),
+            description: None,
+            publisher: mock_user.username.clone(),
+            published: None,
+            created_at: None,
+            updated_at: None,
+        };
+
+        let _ = add_roadmap(roadmap, &pool)
+            .await
+            .expect("Adding roadmap should not throw error");
+
+        let result = roadmap_exist(roadmap_id.to_string(), &pool).await.unwrap();
+
+        println!("{} roadmap exists?: {}", roadmap_id.clone(), result);
+
+        if !result {
+            panic!("Roadmap is not added somehow");
+        }
+
+        let mut handles = Vec::new();
+
+        let url = format!(
+            "ws://localhost:3000/api/v1/roadmaps/{}/areas",
+            roadmap_id.to_string()
+        );
+
+        for _ in 0..connections {
+            let url = url.to_string();
+            let running_clone = running.clone();
+
+            let handle = tokio::spawn(async move {
+                match connect_async(&url).await {
+                    Ok((mut ws_stream, _)) => {
+                        let mut interval =
+                            time::interval(Duration::from_millis(1000 / updates_per_second as u64));
+
+                        while running_clone.load(Ordering::Relaxed) {
+                            interval.tick().await;
+
+                            // Create your test message here
+                            let message = Message::Text("Test update".to_string());
+
+                            match ws_stream.send(message).await {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {}
+                }
+            });
+            handles.push(handle);
+        }
+
+        // Wait for specified duration
+        tokio::time::sleep(test_duration).await;
+
+        // Signal all connections to stop
+        running.store(false, Ordering::Relaxed);
+
+        // Wait for all connections to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        child
+            .kill()
+            .expect("Failed to kill the process after finishing the test");
     }
 }
