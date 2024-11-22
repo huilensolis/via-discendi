@@ -28,21 +28,21 @@ pub struct AddRoadmapRequest {
 
 #[derive(Deserialize)]
 pub struct UpdateRoadmapRequest {
-    roadmap_id: String,
-    user_id: String,
-    title: Option<String>,
-    description: Option<String>,
+    pub roadmap_id: String,
+    pub user_id: String,
+    pub title: String,
+    pub description: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct UpsertAreaRequest {
-    area_id: Option<String>,
-    parent_id: Option<String>,
-    title: String,
-    description: Option<String>,
+    pub area_id: Option<String>,
+    pub parent_id: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
 
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Deserialize)]
@@ -145,7 +145,7 @@ pub async fn update_roadmap_router(
 ) -> Response<Body> {
     let roadmap = Roadmaps {
         id: request.roadmap_id.to_string(),
-        title: request.title.unwrap_or("".to_string()),
+        title: request.title,
         description: request.description,
         publisher: request.user_id,
         published: None,

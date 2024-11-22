@@ -7,17 +7,22 @@ mod tests {
     use crate::{
         auth::{add_user, User},
         roadmap::{
-            add_areas, add_roadmap, delete_area, delete_roadmap, find_roadmap, get_roadmap_by_id,
-            get_roadmaps, get_user_roadmaps, roadmap_exist, update_areas, update_roadmap, Areas,
-            Roadmaps,
+            add_areas, add_roadmap, api::UpsertAreaRequest, delete_area, delete_roadmap,
+            find_roadmap, get_roadmap_by_id, get_roadmaps, get_user_roadmaps, roadmap_exist,
+            update_areas, update_roadmap, Areas, Roadmaps,
         },
+        router_common::CreateResponse,
         utils::generate_random_str,
     };
 
     use core::panic;
-    use std::process::{Child, Command, Stdio};
+    use std::{
+        process::{Command, Stdio},
+        sync::atomic::AtomicU64,
+        time::Instant,
+    };
 
-    use futures_util::sink::SinkExt;
+    use futures_util::{sink::SinkExt, StreamExt};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
     use tokio::time::{self, Duration};
@@ -525,16 +530,14 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn load_test_area_update() {
-        let connections = 10;
-        let updates_per_second = 100;
-
-        let test_duration = Duration::from_secs(5);
+        let connections = 500;
+        let test_duration = Duration::from_secs(60);
         let server_runtime = Duration::from_secs(3);
 
         let mut child = Command::new("cargo")
             .arg("run")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()
             .expect("The server failed to run");
 
@@ -549,9 +552,10 @@ mod tests {
             .unwrap();
 
         let mock_email = format!("{}@gmail.com", generate_random_str(DEFAULT_RANDOM_LENGTH));
+        let mock_username = generate_random_str(DEFAULT_RANDOM_LENGTH);
 
         let mock_user = User {
-            username: generate_random_str(DEFAULT_RANDOM_LENGTH),
+            username: mock_username.to_string(),
             name: "Publisher 2".to_string(),
             email: mock_email,
             password: "password".to_string(),
@@ -577,13 +581,9 @@ mod tests {
             .await
             .expect("Adding roadmap should not throw error");
 
-        let result = roadmap_exist(roadmap_id.to_string(), &pool).await.unwrap();
-
-        println!("{} roadmap exists?: {}", roadmap_id.clone(), result);
-
-        if !result {
-            panic!("Roadmap is not added somehow");
-        }
+        let _ = roadmap_exist(roadmap_id.to_string(), &pool)
+            .await
+            .expect("Roadmap should have existed");
 
         let mut handles = Vec::new();
 
@@ -592,33 +592,123 @@ mod tests {
             roadmap_id.to_string()
         );
 
-        for _ in 0..connections {
-            let url = url.to_string();
+        // Changed to track both total latency and message count across all connections
+        let total_latency = Arc::new(AtomicU64::new(0));
+        let total_messages = Arc::new(AtomicU64::new(0));
+
+        let total_areas = 100_000;
+
+        let mut fut_add_areas: Vec<_> = Vec::new();
+
+        for _i in 0..total_areas {
+            let area = Areas {
+                id: generate_random_str(DEFAULT_RANDOM_LENGTH),
+                parent_id: None,
+                roadmap_id: roadmap_id.clone(),
+                title: generate_random_str(DEFAULT_RANDOM_LENGTH),
+                description: None,
+                created_at: None,
+                updated_at: None,
+                x: 0.0,
+                y: 0.0,
+            };
+            fut_add_areas.push(add_areas(area, &pool));
+        }
+
+        for area in fut_add_areas {
+            let _ = area.await.unwrap();
+        }
+
+        for _i in 0..connections {
+            let url = url.clone();
             let running_clone = running.clone();
+            let total_latency_clone = Arc::clone(&total_latency);
+            let total_messages_clone = Arc::clone(&total_messages);
 
             let handle = tokio::spawn(async move {
                 match connect_async(&url).await {
                     Ok((mut ws_stream, _)) => {
-                        let mut interval =
-                            time::interval(Duration::from_millis(1000 / updates_per_second as u64));
+                        let mut interval = time::interval(Duration::from_millis(250));
+                        let mut current_area_id: Option<String> = None;
 
                         while running_clone.load(Ordering::Relaxed) {
                             interval.tick().await;
 
-                            // Create your test message here
-                            let message = Message::Text("Test update".to_string());
+                            // Create message using the ID from previous response
+                            let message = UpsertAreaRequest {
+                                area_id: current_area_id.clone(),
+                                parent_id: None,
+                                title: generate_random_str(DEFAULT_RANDOM_LENGTH),
+                                description: None,
+                                x: 0.0,
+                                y: 0.0,
+                            };
+
+                            let message_json = serde_json::to_string(&message).unwrap();
+                            let message = Message::Text(message_json);
+                            let start_time = Instant::now();
 
                             match ws_stream.send(message).await {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    // Wait for and parse the response
+                                    match ws_stream.next().await {
+                                        Some(Ok(Message::Text(response_text))) => {
+                                            match serde_json::from_str::<CreateResponse>(
+                                                &response_text,
+                                            ) {
+                                                Ok(response) => {
+                                                    if response.is_successful {
+                                                        // Update the area_id for the next iteration
+                                                        current_area_id = response.id;
+                                                    } else {
+                                                        eprintln!(
+                                                            "Server returned error: {}",
+                                                            response.message
+                                                        );
+                                                    }
+
+                                                    let latency =
+                                                        start_time.elapsed().as_millis() as u64;
+                                                    total_latency_clone
+                                                        .fetch_add(latency, Ordering::Relaxed);
+                                                    total_messages_clone
+                                                        .fetch_add(1, Ordering::Relaxed);
+                                                }
+                                                Err(e) => {
+                                                    eprintln!(
+                                                        "Failed to parse response JSON: {}",
+                                                        e
+                                                    );
+                                                    eprintln!("Response text: {}", response_text);
+                                                }
+                                            }
+                                        }
+                                        Some(Ok(_)) => {
+                                            eprintln!("Received non-text message");
+                                        }
+                                        Some(Err(e)) => {
+                                            eprintln!("Error receiving message: {}", e);
+                                            break;
+                                        }
+                                        None => {
+                                            eprintln!("WebSocket connection closed");
+                                            break;
+                                        }
+                                    }
+                                }
                                 Err(e) => {
+                                    eprintln!("Failed sending message: {}", e);
                                     break;
                                 }
                             }
                         }
                     }
-                    Err(e) => {}
+                    Err(e) => {
+                        eprintln!("Failed connecting to websocket: {}", e);
+                    }
                 }
             });
+
             handles.push(handle);
         }
 
@@ -631,6 +721,20 @@ mod tests {
         // Wait for all connections to complete
         for handle in handles {
             handle.await.unwrap();
+        }
+
+        let final_latency = total_latency.load(Ordering::Relaxed);
+        let final_messages = total_messages.load(Ordering::Relaxed);
+
+        if final_messages > 0 {
+            println!(
+                "Total messages sent: {}\nTotal latency: {}ms\nAverage latency: {}ms",
+                final_messages,
+                final_latency,
+                final_latency as f64 / final_messages as f64
+            );
+        } else {
+            println!("No messages were sent during the test");
         }
 
         child
