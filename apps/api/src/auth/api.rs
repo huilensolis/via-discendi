@@ -46,7 +46,7 @@ fn parse_cookie_value(value: String) -> HashMap<String, String> {
 }
 
 pub async fn login_router(
-    State(router_global_state): State<RouterGlobalState>, // Use '_ to elide the explicit lifetime
+    State(router_global_state): State<RouterGlobalState>,
     Json(request): Json<LoginRequest>,
 ) -> Response<Body> {
     let result = login(
@@ -62,6 +62,7 @@ pub async fn login_router(
                 let response = serde_json::to_string(&CreateResponse {
                     is_successful: false,
                     message: String::from("Invalid username or password"),
+                    id: None,
                 })
                 .unwrap();
 
@@ -89,6 +90,7 @@ pub async fn login_router(
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: true,
                         message: String::from("Successfully login"),
+                        id: None,
                     })
                     .unwrap();
 
@@ -104,6 +106,7 @@ pub async fn login_router(
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: false,
                         message: String::from("Invalid username or password"),
+                        id: None,
                     })
                     .unwrap();
 
@@ -119,6 +122,7 @@ pub async fn login_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: false,
                 message: String::from("Invalid username or password"),
+                id: None,
             })
             .unwrap();
 
@@ -137,7 +141,7 @@ pub async fn sign_up_router(
     let mut sign_up_user = User {
         created_at: None,
         updated_at: None,
-        username: request.username,
+        username: request.username.to_string(),
         password: request.password,
         email: request.email,
         name: request.name,
@@ -151,6 +155,7 @@ pub async fn sign_up_router(
                 let response = serde_json::to_string(&CreateResponse {
                     is_successful: false,
                     message: String::from("Could not sign up due to error please try again"),
+                    id: None,
                 })
                 .unwrap();
 
@@ -163,6 +168,7 @@ pub async fn sign_up_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: true,
                 message: String::from("Successfuly sign up"),
+                id: Some(request.username),
             })
             .unwrap();
 
@@ -177,6 +183,7 @@ pub async fn sign_up_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: false,
                 message: String::from("Failed to sign up, please try again"),
+                id: None,
             })
             .unwrap();
 
@@ -203,6 +210,7 @@ pub async fn refresh_token_router(
                 let response = serde_json::to_string(&CreateResponse {
                     is_successful: false,
                     message: String::from("Please login before refreshing token"),
+                    id: None,
                 })
                 .unwrap();
 
@@ -217,6 +225,7 @@ pub async fn refresh_token_router(
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: true,
                         message: String::from("Token refreshed"),
+                        id: None,
                     })
                     .unwrap();
 
@@ -231,6 +240,7 @@ pub async fn refresh_token_router(
                     let response = serde_json::to_string(&CreateResponse {
                         is_successful: false,
                         message: String::from("Could not refresh token, please try again"),
+                        id: None,
                     })
                     .unwrap();
 
@@ -245,6 +255,7 @@ pub async fn refresh_token_router(
             let response = serde_json::to_string(&CreateResponse {
                 is_successful: false,
                 message: String::from("Please login before refreshing token"),
+                id: None,
             })
             .unwrap();
 

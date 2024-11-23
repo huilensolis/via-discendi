@@ -3,16 +3,17 @@ version: '3.8'
 services:
   postgres:
     image: postgres:latest  
-    container_name: postgres_db  # Name of the container
+    container_name: postgres_db  
     environment:
-      POSTGRES_USER: myuser      # Set the default PostgreSQL user
-      POSTGRES_PASSWORD: mypassword  # Set the password for the user
-      POSTGRES_DB: mydatabase    # Set the default database name
+      POSTGRES_USER: myuser      
+      POSTGRES_PASSWORD: mypassword  
+      POSTGRES_DB: mydatabase    
     ports:
-      - "5432:5432"  # Map port 5432 on the host to port 5432 in the container
+      - "5432:5432"  
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Persist data on the host
+      - postgres_data:/var/lib/postgresql/data  
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro  
 
 volumes:
   postgres_data:
-    driver: local  # Specify the volume driver
+    driver: local  

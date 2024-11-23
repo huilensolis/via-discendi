@@ -5,12 +5,13 @@ use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
 };
 use chrono::{Duration, NaiveDateTime};
-use log::{debug, error};
-use rand::{distributions::Alphanumeric, Rng};
+use log::error;
 use sqlx::{
     postgres::{PgPool, PgQueryResult},
     types::chrono::Local,
 };
+
+use crate::utils::generate_random_str;
 
 pub mod api;
 mod test;
@@ -21,12 +22,12 @@ const DEFAULT_SESSION_DURATION_MIN: i64 = 30;
 
 #[derive(Debug)]
 pub struct User {
-    username: String,
-    email: String,
-    password: String,
-    name: String,
-    created_at: Option<NaiveDateTime>,
-    updated_at: Option<NaiveDateTime>,
+    pub username: String,
+    pub email: String,
+    pub password: String,
+    pub name: String,
+    pub created_at: Option<NaiveDateTime>,
+    pub updated_at: Option<NaiveDateTime>,
 }
 
 impl PartialEq for User {
@@ -48,17 +49,7 @@ pub struct UserSession {
     updated_at: Option<NaiveDateTime>,
 }
 
-fn generate_token(length: u8) -> String {
-    let random_string: String = rand::thread_rng()
-        .sample_iter(&Alphanumeric) // generates random alphanumeric characters
-        .take(length.into()) // take n characters
-        .map(char::from) // map them to characters
-        .collect(); // collect into a String
-
-    random_string
-}
-
-async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+pub async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let query = sqlx::query!(
         "INSERT INTO USERS (USERNAME, EMAIL, PASSWORD, NAME) VALUES ($1, $2, $3, $4)",
         user.username,
@@ -72,7 +63,7 @@ async fn add_user(user: &User, pool: &PgPool) -> Result<PgQueryResult, sqlx::Err
     query
 }
 
-async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error> {
+pub async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error> {
     let user = sqlx::query_as!(User, "SELECT * FROM USERS WHERE USERNAME = $1", username)
         .fetch_one(pool)
         .await;
@@ -80,7 +71,7 @@ async fn find_user(username: &String, pool: &PgPool) -> Result<User, sqlx::Error
     user
 }
 
-async fn update_user_token(
+pub async fn update_user_token(
     user_session: &UserSession,
     pool: &PgPool,
 ) -> Result<PgQueryResult, sqlx::Error> {
@@ -94,7 +85,7 @@ async fn update_user_token(
     .await
 }
 
-async fn find_session_by_username(
+pub async fn find_session_by_username(
     username: &String,
     pool: &PgPool,
 ) -> Result<UserSession, sqlx::Error> {
@@ -109,7 +100,7 @@ async fn find_session_by_username(
 }
 
 //TODO: Add logger for knowing what happen to the code
-async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
+pub async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
     let password = user.password.as_bytes();
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -130,7 +121,7 @@ async fn sign_up(user: &mut User, pool: &PgPool) -> Result<bool, String> {
     }
 }
 
-async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bool, String> {
+pub async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bool, String> {
     let find_result = find_user(&username, pool).await;
 
     match find_result {
@@ -151,7 +142,7 @@ async fn login(username: &String, password: &String, pool: &PgPool) -> Result<bo
     }
 }
 
-async fn refresh_user_session(
+pub async fn refresh_user_session(
     refresh_token: &String,
     pool: &PgPool,
 ) -> Result<UserSession, String> {
@@ -159,7 +150,7 @@ async fn refresh_user_session(
 
     match result {
         Ok(mut user_session) => {
-            let new_token = generate_token(DEFAULT_TOKEN_LENGTH);
+            let new_token = generate_random_str(DEFAULT_TOKEN_LENGTH);
             user_session.token = new_token.clone();
             user_session.expiry_date =
                 Some((Local::now() + Duration::minutes(DEFAULT_SESSION_DURATION_MIN)).naive_utc());
@@ -175,7 +166,7 @@ async fn refresh_user_session(
     }
 }
 
-async fn get_user_session_by_refresh_token(
+pub async fn get_user_session_by_refresh_token(
     refresh_token: &String,
     pool: &PgPool,
 ) -> Result<UserSession, sqlx::Error> {
@@ -190,9 +181,9 @@ async fn get_user_session_by_refresh_token(
     query
 }
 
-async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSession, String> {
-    let token = generate_token(DEFAULT_TOKEN_LENGTH);
-    let refresh_token = generate_token(DEFAULT_TOKEN_LENGTH);
+pub async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSession, String> {
+    let token = generate_random_str(DEFAULT_TOKEN_LENGTH);
+    let refresh_token = generate_random_str(DEFAULT_TOKEN_LENGTH);
     let current_time = Local::now();
 
     let existing_session = find_session_by_username(username, pool).await;
@@ -233,7 +224,7 @@ async fn create_user_session(username: &String, pool: &PgPool) -> Result<UserSes
     }
 }
 
-async fn validate_session(user_session: &UserSession) -> Result<bool, String> {
+pub async fn validate_session(user_session: &UserSession) -> Result<bool, String> {
     match user_session.expiry_date {
         Some(expiry_date) => {
             let current_time = Local::now().naive_utc();

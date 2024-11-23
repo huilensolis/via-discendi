@@ -1,6 +1,6 @@
 use axum::{
-    middleware::{self, from_fn},
-    routing::{get, post},
+    middleware::from_fn,
+    routing::{get, post, put},
     Router,
 };
 use log::{info, Level, LevelFilter, SetLoggerError};
@@ -10,8 +10,10 @@ use sqlx::postgres::PgPoolOptions;
 
 mod auth;
 mod logger;
+mod roadmap;
 mod router_common;
 mod router_middleware;
+mod utils;
 
 static LOGGER: SimpleLogger = SimpleLogger {
     allowed_level: Level::Debug,
@@ -26,7 +28,7 @@ async fn main() {
     let port = 3000;
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://myuser:mypassword@localhost/mydatabase")
+        .connect("postgres://myuser:mypassword@localhost/test_database")
         .await
         .unwrap();
 
@@ -42,6 +44,17 @@ async fn main() {
         .route(
             "/api/v1/refresh_token",
             get(auth::api::refresh_token_router),
+        )
+        .route("/api/v1/roadmaps", post(roadmap::api::add_roadmap_router))
+        .route("/api/v1/roadmaps", put(roadmap::api::update_roadmap_router))
+        .route("/api/v1/roadmaps", get(roadmap::api::find_roadmap_router))
+        .route(
+            "/api/v1/roadmaps/:roadmap_id",
+            get(roadmap::api::get_roadmap_detail_router),
+        )
+        .route(
+            "/api/v1/roadmaps/:roadmap_id/areas",
+            get(roadmap::api::area_websocket_router),
         )
         .layer(from_fn(router_middleware::trace_time))
         .with_state(router_global_state);

@@ -3,7 +3,7 @@ mod tests {
 
     use chrono::{Duration, Local};
     use core::panic;
-    use sqlx::{migrate::Migrator, postgres::PgPoolOptions};
+    use sqlx::postgres::PgPoolOptions;
     use std::cmp::Ordering;
 
     use crate::auth::{
@@ -15,14 +15,9 @@ mod tests {
     async fn test_add_user() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mock_user = User {
             username: String::from("test"),
@@ -48,14 +43,9 @@ mod tests {
     async fn test_find_user() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mock_user = User {
             username: String::from("test2"),
@@ -87,14 +77,9 @@ mod tests {
     async fn test_sign_up() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mut mock_user = User {
             username: String::from("test3"),
@@ -123,14 +108,9 @@ mod tests {
     async fn test_login() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mut mock_user = User {
             username: String::from("test5"),
@@ -155,14 +135,9 @@ mod tests {
     async fn test_create_user_session() {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/mydatabase")
+            .connect("postgres://myuser:mypassword@localhost/test_database")
             .await
             .unwrap();
-
-        let m = Migrator::new(std::path::Path::new("./migrations"))
-            .await
-            .unwrap();
-        m.run(&pool).await.unwrap();
 
         let mut mock_user = User {
             username: String::from("test4"),
