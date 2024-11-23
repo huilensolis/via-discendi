@@ -195,13 +195,15 @@ mod tests {
         let mock_user = User {
             username: generate_random_str(DEFAULT_RANDOM_LENGTH),
             name: "Publisher 2".to_string(),
-            email: "publisher2@pgmail.com".to_string(),
+            email: "publisherunique@gmail.com".to_string(),
             password: "password".to_string(),
             created_at: None,
             updated_at: None,
         };
 
-        let _ = add_user(&mock_user, &pool).await;
+        let _ = add_user(&mock_user, &pool)
+            .await
+            .expect("Adding user should not have failed");
 
         for i in 0..total_roadmap {
             add_roadmap_futures.push(add_roadmap(
@@ -210,7 +212,7 @@ mod tests {
                     title: format!("title {}", i),
                     description: None,
                     publisher: mock_user.username.clone(),
-                    published: None,
+                    published: Some(true),
                     created_at: None,
                     updated_at: None,
                 },
@@ -219,7 +221,7 @@ mod tests {
         }
 
         for roadmap in add_roadmap_futures {
-            let _ = roadmap.await;
+            let _ = roadmap.await.expect("Adding roadmap should not failed");
         }
 
         match find_roadmap("title".to_string(), 10, 0, &pool).await {
@@ -257,11 +259,11 @@ mod tests {
         let total_roadmap = 10;
         let mut add_roadmap_futures: Vec<_> = Vec::new();
 
-        for i in 0..total_roadmap {
+        for _ in 0..total_roadmap {
             add_roadmap_futures.push(add_roadmap(
                 Roadmaps {
                     id: generate_random_str(DEFAULT_RANDOM_LENGTH),
-                    title: format!("title {}", i),
+                    title: generate_random_str(DEFAULT_RANDOM_LENGTH),
                     description: None,
                     publisher: mock_user.username.clone(),
                     published: None,
@@ -274,7 +276,9 @@ mod tests {
 
         //waiting for all the concurrent request result
         for roadmap in add_roadmap_futures {
-            let result = roadmap.await.unwrap();
+            let _ = roadmap
+                .await
+                .expect("Adding roadmap should not have failed");
         }
 
         match get_user_roadmaps(mock_user.username.clone(), &pool).await {

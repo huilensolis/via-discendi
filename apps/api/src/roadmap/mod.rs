@@ -76,14 +76,15 @@ async fn add_roadmap(roadmap: Roadmaps, pool: &PgPool) -> Result<PgQueryResult, 
     let query = query!(
         r#"
             INSERT INTO ROADMAPS 
-                (ID, TITLE, DESCRIPTION, PUBLISHER)
+                (ID, TITLE, DESCRIPTION, PUBLISHER, PUBLISHED)
             VALUES
-                ($1, $2, $3, $4)
+                ($1, $2, $3, $4, $5)
         "#,
         roadmap.id,
         roadmap.title,
         roadmap.description,
-        roadmap.publisher
+        roadmap.publisher,
+        roadmap.published
     )
     .execute(pool)
     .await;
