@@ -17,6 +17,7 @@ export type Err<T> = {
   value: T;
 };
 
+
 export type Option<T> = Some<T> | None;
 export type Result<T, K> = Ok<T> | Err<K>;
 
@@ -46,11 +47,3 @@ export const none = (): None => {
     _tag: "None",
   };
 };
-
-export function isOk<T, K>(result: Result<T, K>): result is Ok<T> {
-  return result._tag === "Ok";
-}
-
-export function isErr<T, K>(result: Result<T, K>): result is Err<K> {
-  return result._tag === "Err";
-}
