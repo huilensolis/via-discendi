@@ -11,7 +11,6 @@ defaults:
 
 env:
   DATABASE_URL: postgres://myuser:mypassword@localhost/mydatabase
-  RUST_TEST_THREADS: 1 # running the test on a single thread might make test much slower should be change by mutex on the future
 
 jobs:
   run-api-tests:
@@ -41,4 +40,4 @@ jobs:
       - name: run migration
         run: cargo sqlx migrate run
       - name: run tests
-        run: cargo test
+        run: ./run_test.sh
