@@ -1,4 +1,4 @@
-import { Result, Option, ok, err } from "@/lib";
+import { Result, Option, Ok, ok, err } from "@/lib";
 import { CreateResponse, HttpStatus } from "./common";
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 
