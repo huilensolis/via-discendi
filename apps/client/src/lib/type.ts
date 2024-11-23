@@ -47,9 +47,6 @@ export const none = (): None => {
   };
 };
 
-export function isSome<T>(option: Option<T>): option is Some<T> {
-  return option._tag === "Some";
-}
 export function isOk<T, K>(result: Result<T, K>): result is Ok<T> {
   return result._tag === "Ok";
 }

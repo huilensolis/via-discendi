@@ -1,18 +1,18 @@
 "use client";
 
-import { login, User } from "@/api";
-import { isOk, none, some, Option } from "@/lib";
+import { login, LoginResponse, User } from "@/api";
+import { isOk, none, some, Option, isErr } from "@/lib";
 import axios from "axios";
 import { createContext, useState } from "react";
 
-export interface AuthProviderData {
+interface AuthProviderData {
   user: Option<User>;
   setUser: (username: string, password: string) => void;
 }
 
 // TODO: think about how to instantiate the axios client better
 const axiosClient = axios.create();
-export const AuthContext = createContext<Option<AuthProviderData>>(none());
+const AuthProvider = createContext<Option<AuthProviderData>>(none());
 
 export function Providers({ children }: any) {
   const [user, setUser] = useState<Option<User>>(none());
@@ -32,8 +32,8 @@ export function Providers({ children }: any) {
     }
   };
   return (
-    <AuthContext.Provider value={some({ user: user, setUser: loginWrapper })}>
+    <AuthProvider.Provider value={some({ user: user, setUser: loginWrapper })}>
       {children}
-    </AuthContext.Provider>
+    </AuthProvider.Provider>
   );
 }
