@@ -530,8 +530,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn load_test_area_update() {
-        let connections = 500;
-        let test_duration = Duration::from_secs(60);
+        let connections = 100;
+        let test_duration = Duration::from_secs(10);
         let server_runtime = Duration::from_secs(3);
 
         let mut child = Command::new("cargo")
@@ -592,10 +592,6 @@ mod tests {
             roadmap_id.to_string()
         );
 
-        // Changed to track both total latency and message count across all connections
-        let total_latency = Arc::new(AtomicU64::new(0));
-        let total_messages = Arc::new(AtomicU64::new(0));
-
         let total_areas = 100_000;
 
         let mut fut_add_areas: Vec<_> = Vec::new();
@@ -619,22 +615,20 @@ mod tests {
             let _ = area.await.unwrap();
         }
 
-        for _i in 0..connections {
+        for i in 0..connections {
             let url = url.clone();
             let running_clone = running.clone();
-            let total_latency_clone = Arc::clone(&total_latency);
-            let total_messages_clone = Arc::clone(&total_messages);
-
             let handle = tokio::spawn(async move {
                 match connect_async(&url).await {
                     Ok((mut ws_stream, _)) => {
-                        let mut interval = time::interval(Duration::from_millis(250));
+                        // 60 rps
                         let mut current_area_id: Option<String> = None;
+                        let mut latency = 0;
+                        let mut total_messages = 0;
 
                         while running_clone.load(Ordering::Relaxed) {
-                            interval.tick().await;
-
                             // Create message using the ID from previous response
+                            total_messages += 1;
                             let message = UpsertAreaRequest {
                                 area_id: current_area_id.clone(),
                                 parent_id: None,
@@ -667,12 +661,8 @@ mod tests {
                                                         );
                                                     }
 
-                                                    let latency =
+                                                    latency +=
                                                         start_time.elapsed().as_millis() as u64;
-                                                    total_latency_clone
-                                                        .fetch_add(latency, Ordering::Relaxed);
-                                                    total_messages_clone
-                                                        .fetch_add(1, Ordering::Relaxed);
                                                 }
                                                 Err(e) => {
                                                     eprintln!(
@@ -702,6 +692,16 @@ mod tests {
                                 }
                             }
                         }
+
+                        println!(
+                            "total message sent for connection {}: {}ms",
+                            i, total_messages
+                        );
+                        println!(
+                            "average latency for connection {}: {}ms",
+                            i,
+                            latency / total_messages
+                        );
                     }
                     Err(e) => {
                         eprintln!("Failed connecting to websocket: {}", e);
@@ -721,20 +721,6 @@ mod tests {
         // Wait for all connections to complete
         for handle in handles {
             handle.await.unwrap();
-        }
-
-        let final_latency = total_latency.load(Ordering::Relaxed);
-        let final_messages = total_messages.load(Ordering::Relaxed);
-
-        if final_messages > 0 {
-            println!(
-                "Total messages sent: {}\nTotal latency: {}ms\nAverage latency: {}ms",
-                final_messages,
-                final_latency,
-                final_latency as f64 / final_messages as f64
-            );
-        } else {
-            println!("No messages were sent during the test");
         }
 
         child
