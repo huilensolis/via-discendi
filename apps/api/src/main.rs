@@ -1,3 +1,7 @@
+use std::result;
+
+use sysinfo::{System, SystemExt};
+
 use axum::{
     middleware::from_fn,
     routing::{get, post, put},
@@ -5,11 +9,14 @@ use axum::{
 };
 use log::{info, Level, LevelFilter, SetLoggerError};
 use logger::SimpleLogger;
+use observability::system_metrics_router;
 use router_common::RouterGlobalState;
+
 use sqlx::postgres::PgPoolOptions;
 
 mod auth;
 mod logger;
+mod observability;
 mod roadmap;
 mod router_common;
 mod router_middleware;
@@ -33,6 +40,7 @@ async fn main() {
         .unwrap();
 
     init().unwrap();
+
     let router_global_state = RouterGlobalState { pool };
 
     info!("Configuring routers...");
@@ -56,8 +64,25 @@ async fn main() {
             "/api/v1/roadmaps/:roadmap_id/areas",
             get(roadmap::api::area_websocket_router),
         )
+        .route("/metrics", get(system_metrics_router))
         .layer(from_fn(router_middleware::trace_time))
+        .layer(from_fn(router_middleware::active_connections))
+        .layer(from_fn(router_middleware::total_http_request))
         .with_state(router_global_state);
+
+    info!("Registering metrics information...");
+
+    observability::register_metrics();
+
+    info!("Starting background thread worker...");
+
+    let sys = System::new_all();
+
+    let system_metric_update_handle = tokio::spawn(async move {
+        observability::update_system_metrics(sys).await;
+    });
+
+    observability::register_metrics();
 
     info!("Starting server on port {}", port);
 
@@ -65,4 +90,6 @@ async fn main() {
         .await
         .unwrap();
     axum::serve(listener, main_router).await.unwrap();
+    //TODO: somehow kill this thing gracefully
+    system_metric_update_handle.await.unwrap();
 }
