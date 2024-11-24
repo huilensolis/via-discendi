@@ -92,7 +92,6 @@ pub async fn update_system_metrics(mut sys: System) {
         // Update swap metrics
         let used_swap = sys.used_swap() as f64;
         SWAP_USAGE_BYTES.set(used_swap * 1024.0);
-        HTTP_REQUEST_DURATION.observe_closure_duration(…)
 
         // Update disk metrics
         if let Some(disk) = sys

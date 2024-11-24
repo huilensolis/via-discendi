@@ -35,7 +35,7 @@ async fn main() {
     let port = 3000;
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://myuser:mypassword@localhost/test_database")
+        .connect("postgres://myuser:mypassword@localhost/mydatabase")
         .await
         .unwrap();
 

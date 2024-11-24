@@ -18,7 +18,6 @@ mod tests {
     use core::panic;
     use std::{
         process::{Command, Stdio},
-        sync::atomic::AtomicU64,
         time::Instant,
     };
 
@@ -535,15 +534,8 @@ mod tests {
     #[ignore]
     async fn load_test_area_update() {
         let connections = 100;
-        let test_duration = Duration::from_secs(10);
+        let test_duration = Duration::from_secs(60);
         let server_runtime = Duration::from_secs(3);
-
-        let mut child = Command::new("cargo")
-            .arg("run")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("The server failed to run");
 
         tokio::time::sleep(server_runtime).await;
 
@@ -551,7 +543,7 @@ mod tests {
 
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://myuser:mypassword@localhost/test_database")
+            .connect("postgres://myuser:mypassword@localhost/mydatabase")
             .await
             .unwrap();
 
@@ -573,7 +565,7 @@ mod tests {
 
         let roadmap = Roadmaps {
             id: roadmap_id.clone(),
-            title: generate_random_str(DEFAULT_RANDOM_LENGTH),
+            title: "For testing purposes only".to_string(),
             description: None,
             publisher: mock_user.username.clone(),
             published: None,
@@ -595,29 +587,6 @@ mod tests {
             "ws://localhost:3000/api/v1/roadmaps/{}/areas",
             roadmap_id.to_string()
         );
-
-        let total_areas = 100_000;
-
-        let mut fut_add_areas: Vec<_> = Vec::new();
-
-        for _i in 0..total_areas {
-            let area = Areas {
-                id: generate_random_str(DEFAULT_RANDOM_LENGTH),
-                parent_id: None,
-                roadmap_id: roadmap_id.clone(),
-                title: generate_random_str(DEFAULT_RANDOM_LENGTH),
-                description: None,
-                created_at: None,
-                updated_at: None,
-                x: 0.0,
-                y: 0.0,
-            };
-            fut_add_areas.push(add_areas(area, &pool));
-        }
-
-        for area in fut_add_areas {
-            let _ = area.await.unwrap();
-        }
 
         for i in 0..connections {
             let url = url.clone();
@@ -726,9 +695,5 @@ mod tests {
         for handle in handles {
             handle.await.unwrap();
         }
-
-        child
-            .kill()
-            .expect("Failed to kill the process after finishing the test");
     }
 }
